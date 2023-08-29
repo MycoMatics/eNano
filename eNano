@@ -1,0 +1,527 @@
+#!/bin/bash
+# DESCRIPTION
+#    eNano script.
+#
+# IMPLEMENTATION
+#    author   Glen Dierickx (glen.dierickx@ugent.be or glen.dierickx@inbo.be)
+#
+
+# Error and dependencies function - install if needed
+# ---------------------------------------------------
+# Function to handle errors and exit with a specific message and code
+die() {
+    echo "Error: $1" >&2
+    exit "$2"
+}
+
+# Check if a command is available in the system
+check_command() {
+    command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1" 1
+}
+
+# Check if Conda is installed and install eNano_env environment
+install_conda() {
+    # Check if Conda is installed
+    check_command "conda"
+    
+    # Check if the 'eNano_env' environment already exists
+    if conda info --envs | grep -q "eNano_env"; then
+        die "'eNano_env' Conda environment already exists. Please remove it or choose a different environment name." 1
+    fi
+
+    # Create a new Conda environment for eNano (change 'env_name' to the desired name)
+    conda create -y -n eNano_env
+    
+    # Activate the Conda environment
+    source activate eNano_env
+    
+    # Install required dependencies
+    conda install -y nanofilt vsearch cutadapt porechop
+    
+    # Move the eNano script to the Conda environment's bin directory
+    mv eNano "$(conda info --root)/envs/eNano_env/bin/"
+    echo "eNano has been installed in the 'eNano_env' Conda environment. You can now use 'eNano' command to run the pipeline."
+}
+# Check if the --install-conda flag is provided
+if [ "$1" = "--install-conda" ]; then
+    install_conda
+    exit 0
+fi
+
+# Function to check the first column for OTU IDs
+check_otu_ids() {
+    if ! awk -F '\t' '{print $1}' "$1" | grep -q 'OTU_[0-9]\+'; then
+        die "The first column of the $2 does not contain OTU IDs." 1
+    fi
+}
+
+# Default values for variables
+OUTPUT_PATH="eNano_out"
+THREADS="1"
+FWP="CTTGGTCATTTAGAGGAAGTAA"
+RVP="GCATATCAATAAGCGGAGGA"
+MIN_LENGTH="400"
+MAX_LENGTH="1200"
+EE="0.2"
+Q_THRESHOLD="20"
+CLUSTER_PERCENT="0.97"
+
+# Skip flags for different steps (0: do not skip, 1: skip)
+SKIP_CONCAT=0
+SKIP_PROCESS=0
+SKIP_OTU=0
+SKIP_LULU=1
+CHIM_REF=0
+
+# Set required variables
+REQUIRED_FASTQGZ_PATH="1"
+REQUIRED_DB_FASTA="1"
+
+# Function to display usage information
+usage() {
+    echo "./eNano --install-conda       installs eNano in the eNano_env conda environment and adds it to /envs/eNano_env/bin/ (only needed for initial install)"
+    echo ""
+    echo "eNano: Pipeline that generates an OTU table and associated taxonomy from demultiplexed Nanopore data outputted by Minknow.
+          The input usually is a 'fastq_pass' directory with barcode01 - barcode96 subdirectories, each containing fastq files that passed some user-defined quality threshold.
+          3 steps are performed, each of which can be skipped.
+            1) concatenate fastq.gz files in each barcode subdirectory into a single fastq - outputted in concatenated_barcodes.
+            2) processing each barcode fastq file - outputted in processed_fasta.
+               - porechop trim
+               - cutadapt reorient using forward primer and --rc flag
+               - cutadapt trim of primers, only sequences with both forward and reverse primers are retained
+               - NanoFilt quality filter at user-defined phred score
+               - vsearch convert to fasta
+               - sed on sequence IDs prepends barcode name and removes whitespaces
+               - vsearch appends sample names for parsing OTU table
+            3) uses output from step 2 to generate a single OTU table and taxonomy - outputted in main folder
+               - concatenate processed fasta files
+               - sed on sequence IDs to append semicolon (temporary fix for parsing)
+               - vsearch chimera filtering with uchime_denovo or uchime_ref
+               - vsearch OTU cluster and relabel sequences
+               - vsearch sorts OTUs by size
+               - vsearch retrieve taxonomy with sintax from database fasta file
+               - join otu-table with taxonomy
+               - vsearch creates a match_list which can be used in LULU for curating OTU table
+            4) uses match_list from step 3 to perform lulu curation of OTU table - outputted in the main folder.
+               - runs R from terminal
+                 + get output directory, load otu-table and match list  
+                 + load lulu and dplyr (and install if required via devtools)  
+                 + run lulu and output curated table  
+                 + write the number of curated OTUs to log file  
+               - join curated otu-table with taxonomy table  
+"
+    echo ""
+    echo "Usage: $0 [[--help] (--fastqgz dir --output dir --threads value)
+                             (--fwp string --rvp string --minlength value --maxlength value)
+                             (--ee value --q value --clusterid value --db file --chimref [arg])
+                             (--skip-concat [arg] --skip-process [arg] --skip-otu [arg] --skip-lulu [arg])"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help           Display this help message"
+    echo "  --fastqgz PATH       Path to the directory with fastq.gz files (required, unless --skip-concat 1)"
+    echo "  --output name        Foldername for the output directory (default: $OUTPUT_PATH)"
+    echo "  --threads NUM        Number of threads to use (default: $THREADS)"
+    echo "  --fwp SEQUENCE       Forward primer sequence for cutadapt (default=ITS1F: $FWP)"
+    echo "  --rvp SEQUENCE       Reverse primer sequence for cutadapt (default=ITS4: $RVP)"
+    echo "  --minlength NUM      Minimum length of reads to keep in cutadapt(default: $MIN_LENGTH)"
+    echo "  --maxlength NUM      Maximum length of reads to keep in cutadapt(default: $MAX_LENGTH)"
+    echo "  --ee NUM             Expected error rate for cutadapt (default: $EE)"
+    echo "  --q NUM              Quality threshold for NanoFilt (default: $Q_THRESHOLD)"
+    echo "  --clusterid NUM      OTU clustering identity threshold in vsearch (default: $CLUSTER_PERCENT)"
+    echo "  --db FASTAFILE       Path to the reference FASTA file for taxonomy assignment in vsearch (required, unless --skip-otu 1)"
+    echo "  --chimref            Reference-based (using --db) chimera filtering if set to 1 (default: $CHIM_REF)"
+    echo "  --skip-concat        Skip the concatenation step if set to 1 (default: $SKIP_CONCAT)"
+    echo "  --skip-process       Skip the processing step if set to 1 (default: $SKIP_PROCESS)"
+    echo "  --skip-otu           Skip the OTU clustering and taxonomy assignment step if set to 1 (default: $SKIP_OTU)"
+    echo "  --skip-lulu          Performs the LULU otu curation step if set to 0 (default: $SKIP_LULU)"
+    echo "  --install-conda      Installs eNano and adds it to /envs/eNano_env/bin/"
+    exit 1
+}
+
+# Check eNano is installed and dependencies before proceeding
+check_dependencies() {
+    check_command "zcat"
+    check_command "porechop"
+    check_command "cutadapt"
+    check_command "NanoFilt"
+    check_command "vsearch"
+}
+#check dependencies
+check_dependencies
+
+# Main pipeline function
+eNano() {
+        # Check if no arguments are provided
+        if [[ $# -eq 0 ]]; then
+            usage
+        fi
+    # Parse command-line arguments using getopts
+        while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h | --help)
+                usage
+                ;;
+            --fastqgz)
+                FASTQGZ_PATH=$(realpath "$2")
+                shift 2
+                ;;
+            --output)
+                OUTPUT_PATH="$2"
+                shift 2
+                ;;
+            --threads)
+                THREADS="$2"
+                shift 2
+                ;;
+            --fwp)
+                FWP="$2"
+                shift 2
+                ;;
+            --rvp)
+                RVP="$2"
+                shift 2
+                ;;
+            --minlength)
+                MIN_LENGTH="$2"
+                shift 2
+                ;;
+            --maxlength)
+                MAX_LENGTH="$2"
+                shift 2
+                ;;
+            --ee)
+                EE="$2"
+                shift 2
+                ;;
+            --q)
+                Q_THRESHOLD="$2"
+                shift 2
+                ;;
+            --clusterid)
+                CLUSTER_PERCENT="$2"
+                shift 2
+                ;;
+            --db)
+                DB_FASTA=$(realpath "$2")
+                shift 2
+                ;;
+            --chimref)
+                CHIM_REF="$2"
+                shift 2
+                ;;
+                --skip-concat)
+                SKIP_CONCAT="$2"
+                # If --skip-concat is set to 1, fastqgz flag is not required
+                if [ "$SKIP_CONCAT" -eq 1 ]; then
+                    REQUIRED_FASTQGZ_PATH=0
+                fi
+                shift 2
+                ;;
+            --skip-process)
+                SKIP_PROCESS="$2"
+                shift 2
+                ;;
+            --skip-otu)
+                SKIP_OTU="$2"
+                # If --skip-otu is set to 1, db flag is not required
+                if [ "$SKIP_OTU" -eq 1 ]; then
+                    REQUIRED_DB_FASTA=0
+                fi
+                shift 2
+                ;;
+            --skip-lulu)
+                SKIP_LULU="$2"
+                shift 2
+                ;;
+            *)
+                echo "Error: Unrecognized option: $1"
+                usage
+                ;;
+        esac
+    done
+    
+    # Validate the input parameters
+    validate_parameters() {
+        if [[ ! "$THREADS" =~ ^[0-9]+$ ]]; then
+            die "Invalid number of threads: $THREADS. It must be an integer." 1
+        fi
+    
+        if [[ ! "$MIN_LENGTH" =~ ^[0-9]+$ ]]; then
+            die "Invalid minimum length: $MIN_LENGTH. It must be an integer." 1
+        fi
+    
+        if [[ ! "$MAX_LENGTH" =~ ^[0-9]+$ ]]; then
+            die "Invalid maximum length: $MAX_LENGTH. It must be an integer." 1
+        fi
+    
+        if [[ ! "$EE" =~ ^[0-9]*\.?[0-9]+$ ]]; then
+            die "Invalid expected error rate: $EE. It must be a number." 1
+        fi
+    
+        if [[ ! "$Q_THRESHOLD" =~ ^[0-9]+$ ]]; then
+            die "Invalid quality threshold: $Q_THRESHOLD. It must be an integer." 1
+        fi
+    
+        if [[ ! "$CLUSTER_PERCENT" =~ ^[0-9]*\.?[0-9]+$ ]]; then
+            die "Invalid OTU clustering identity threshold: $CLUSTER_PERCENT. It must be a number." 1
+        fi
+    }
+    
+    validate_parameters
+    check_command "eNano"
+    
+    # Check if fastqgz and db is provided when required
+    if [ "$REQUIRED_FASTQGZ_PATH" -eq 1 ] && [ -z "$FASTQGZ_PATH" ]; then
+        die "The --fastqgz flag is required unless --skip-concat is set to 1" 1
+    fi
+    # Check if db flag is provided when required
+    if [ "$REQUIRED_DB_FASTA" -eq 1 ] && [ -z "$DB_FASTA" ]; then
+        die "The --db flag is required unless --skip-otu is set to 1." 1
+    fi
+
+    # Start pipeline -------------------------------------------------------------------------------
+    echo "running with settings:"
+    echo "  --fastqgz $FASTQGZ_PATH"
+    echo "  --output $OUTPUT_PATH"
+    echo "  --threads $THREADS"
+    echo "  --fwp $FWP"
+    echo "  --rvp $RVP"
+    echo "  --minlength $MIN_LENGTH"
+    echo "  --maxlength $MAX_LENGTH"
+    echo "  --ee $EE"
+    echo "  --q $Q_THRESHOLD"
+    echo "  --clusterid $CLUSTER_PERCENT"
+    echo "  --db $DB_FASTA"
+    echo "  --chimref $CHIM_REF"
+    echo "  --skip-concat $SKIP_CONCAT"
+    echo "  --skip-process $SKIP_PROCESS"
+    echo "  --skip-otu $SKIP_OTU"
+    echo "  --skip-lulu $SKIP_LULU"
+
+    echo "#################################################### starting pipeline for Nanopore simplex data #######################################################"
+
+    # Create the output directory if it doesn't exist
+    MAIN_DIR=$(pwd)
+    mkdir -p "$OUTPUT_PATH/concatenated_barcodes" || die "Failed to create output directory: $OUTPUT_PATH/concatenated_barcodes" 1
+    BARCODE_PATH="$MAIN_DIR/$OUTPUT_PATH/concatenated_barcodes"
+    OUTPUT_PATH="$MAIN_DIR/$OUTPUT_PATH"
+    export LC_ALL=C
+
+    # Step 1: Create output folder that holds all files and redirect concatenated barcode files
+    if [ "$SKIP_CONCAT" -eq 0 ]; then
+        echo "STEP 1 - creating output folder and concatenating fastq.gz files"
+        # Gather all basecalled (fastq.gz) data from a nanopore run and put them in a single folder with 1 file per barcode
+        cd "$FASTQGZ_PATH" || die "FASTQGZ_PATH directory not found: $FASTQGZ_PATH" 1
+        for subdir in "$FASTQGZ_PATH"/*; do
+            if [ -d "$subdir" ]; then
+                # Extract subdirectory name
+                subdirname=$(basename "$subdir")
+                # Move into subdirectory
+                cd "$subdir" || die "Failed to enter subdirectory: $subdir" 1
+                echo "Start concatenating *.fastq.gz files of ${subdirname}"
+                # Unzip .fastq.gz files and combine into one .fastq file
+                gunzip -c *.fastq.gz > "$BARCODE_PATH/$subdirname.fastq"
+                echo "Done with ${subdirname}"
+                # Move back to the main directory
+                cd - || die "Failed to return to the fastqgz directory" 1
+            else
+                echo "no subdirectories barcodes"
+            fi
+        done
+    else
+        echo "Skipping Step 1 - creating output folder and concatenating fastq.gz files"
+    fi
+
+    # Step 2: Process each barcode file
+    if [ "$SKIP_PROCESS" -eq 0 ]; then
+        echo "STEP 2 - processing each barcode file"
+        cd "${OUTPUT_PATH}" || die "OUTPUT_PATH directory not found: $OUTPUT_PATH" 1
+        mkdir -p "processed_fasta"
+        for FILE in ${BARCODE_PATH}/barcode*.fastq; do
+            FILE_NAME=$(basename "${FILE%.*}")
+            echo "$PWD"
+            echo "for ${FILE_NAME} - start trimming adapter, primers, quality filtering, converting to fasta, and adding sample info"
+
+            porechop -i "$FILE"  --extra_end_trim 0 --check_reads 1000 --discard_middle --threads "$THREADS" > "${BARCODE_PATH}/temp1.fastq"
+            cutadapt -g "$FWP"  --action=none -e "$EE" --discard-untrimmed --rc "${BARCODE_PATH}/temp1.fastq" > "${BARCODE_PATH}/temp2.fastq"
+            cutadapt -g "${FWP}...${RVP}" --action=trim -e "$EE" --discard-untrimmed -m "$MIN_LENGTH" -M "$MAX_LENGTH" --times 2 "${BARCODE_PATH}/temp2.fastq" > "${BARCODE_PATH}/temp3.fastq"
+            NanoFilt --logfile "${OUTPUT_PATH}/${FILE_NAME}_${Q_THRESHOLD}_nanofilt_log.txt" --quality "$Q_THRESHOLD" "${BARCODE_PATH}/temp3.fastq" > "${BARCODE_PATH}/temp4.fastq"
+            vsearch --fastq_filter "${BARCODE_PATH}/temp4.fastq" --fastaout "${BARCODE_PATH}/temp5.fasta" --fastq_ascii 33 --fastq_qmax 93
+            sed -i.bak -e "s|^>|>${FILE_NAME}_|" -e "s/;/__/g; s/ //g" "${BARCODE_PATH}/temp5.fasta"
+            vsearch --fastx_filter "$BARCODE_PATH/temp5.fasta" --sample "${FILE_NAME}" --fastaout "${OUTPUT_PATH}/processed_fasta/${FILE_NAME}.fasta"
+            rm "$BARCODE_PATH"/*.bak "$BARCODE_PATH"/temp*.fastq "$BARCODE_PATH"/temp*.fasta
+
+            echo "done processing ${FILE} - written to processed_fasta/${FILE_NAME}.fasta"
+        done
+    else
+        echo "Skipping Step 2 - processing each barcode file"
+    fi
+    # Step 3: concat processed fasta files, OTU clustering and taxonomy assignment
+    if [ "$SKIP_OTU" -eq 0 ]; then
+        cd "$MAIN_DIR" || die "Failed to enter main directory: $MAIN_DIR" 1
+        echo "STEP 3 - concatenating processed barcode files, OTU clustering and taxonomy assignment"
+        echo "concatenating processed barcode files"
+        find "$OUTPUT_PATH/processed_fasta" -maxdepth 1 -type f -name 'barcode*.fasta' -execdir cat {} + > "$OUTPUT_PATH/barcodes.fasta"
+
+        # Temporary fix for vsearch v2.21.1 - add another semicolon after the sample name
+        echo "adding semicolon to sample ID"
+        sed -i.bak "s/;sample=bc[0-9][0-9]/&;/" "${OUTPUT_PATH}/barcodes.fasta"
+        rm "$OUTPUT_PATH"/*.bak
+
+        # OTU clustering
+        # Chimera filtering (compare reference-based and de novo!)
+        echo "start chimera filtering"
+        if [ "$CHIM_REF" -eq 1 ]; then
+            vsearch --uchime_ref "${OUTPUT_PATH}/barcodes.fasta" --db "$DB_FASTA" --nonchimeras "${OUTPUT_PATH}/temp1.fasta"
+        else
+            vsearch --uchime_denovo "${OUTPUT_PATH}/barcodes.fasta" --nonchimeras "${OUTPUT_PATH}/temp1.fasta"
+        fi
+
+        # Extract centroid sequences of OTUs, clustered on 97% identity threshold with the standard algorithm, then sort by size
+        echo "start OTU clustering"
+        vsearch --cluster_smallmem "${OUTPUT_PATH}/temp1.fasta" --usersort --relabel OTU_ --centroids "${OUTPUT_PATH}/temp2.fasta" --otutabout "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv" --sizeout --log "${OUTPUT_PATH}/clusterlog.txt" --id "$CLUSTER_PERCENT" --threads "$THREADS"
+        vsearch --sortbysize "${OUTPUT_PATH}/temp2.fasta" --output "${OUTPUT_PATH}/centroids.fasta"
+        rm "$OUTPUT_PATH"/temp*.fasta
+
+        # Get taxonomy
+        echo "start taxonomic assignment"
+        vsearch --db "$DB_FASTA" --sintax "${OUTPUT_PATH}/centroids.fasta" --tabbedout "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" --sintax_cutoff 0.7
+
+        # combine taxonomy and otu-table - remove string ';size=X' from the taxonomy file, sort both TAX and OTU files
+        sed -E 's/;size=[0-9]+//' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" > "${OUTPUT_PATH}/temp3.tsv"
+        check_otu_ids "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv" "OTU table"
+        check_otu_ids "${OUTPUT_PATH}/temp3.tsv" "taxonomy file"
+        sort -k1,1 "${OUTPUT_PATH}/temp3.tsv" > "${OUTPUT_PATH}/temp4.tsv"
+        cut -f1,2,4 "${OUTPUT_PATH}/temp4.tsv" > "${OUTPUT_PATH}/temp4_cut.tsv"
+        echo -e "#OTU ID\tSINTAX\tTAX" | cat - "${OUTPUT_PATH}/temp4_cut.tsv" > "${OUTPUT_PATH}/temp4_header.tsv"
+        sort -k1,1 "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv" > "${OUTPUT_PATH}/temp5.tsv"
+        
+        # Join sorted OTU and TAX files into combined OTU_TAX file
+        join -1 1 -2 1 -t $'\t' "${OUTPUT_PATH}/temp5.tsv" "${OUTPUT_PATH}/temp4_header.tsv" > "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_temp.tsv"
+        
+        # Process the OTU_TAX file using awk
+        awk 'BEGIN{FS=OFS="\t"} 
+        NR==1 {
+            print $0, "domain", "phylum", "class", "order", "family", "genus", "species"
+            for(i=1; i<=NF; i++) {
+                if($i == "TAX") {
+                    tax_index = i
+                }
+            }
+        }
+        NR>1 {
+            split($tax_index,a,","); 
+            for(i in a) {
+                split(a[i],b,":"); tax[b[1]]=b[2]
+            }
+            $(NF+1)=tax["d"]; $(NF+1)=tax["p"]; $(NF+1)=tax["c"]; $(NF+1)=tax["o"]; $(NF+1)=tax["f"]; $(NF+1)=tax["g"]; $(NF+1)=tax["s"]; 
+            print; delete tax
+        }' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_temp.tsv" > "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX.tsv"
+        
+        # LULU clean-up - Produce a match-list with vsearch, remove string ';size=X' from match file for processing in LULU
+        echo "producing LULU match list"
+        sed -E "s/;size=[0-9]\+//" "${OUTPUT_PATH}/centroids.fasta" > "${OUTPUT_PATH}/temp6.fasta"
+        vsearch --usearch_global "${OUTPUT_PATH}/temp6.fasta"  --db "${OUTPUT_PATH}/temp6.fasta"  --self --id .84 --iddef 1 --userout "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_LULU_match_list.txt" -userfields query+target+id --maxaccepts 0 --query_cov .9 --maxhits 10
+        
+        # Remove temporary files
+        rm "$OUTPUT_PATH"/*temp*
+        
+    else
+        echo "Skipping Step 3 - OTU clustering, chimera filtering, and taxonomy assignment"
+    fi
+
+    # Step 4: LULU otu-table curation, produce match-list and run LULU in R from script
+    if [ "$SKIP_LULU" -eq 0 ]; then
+        check_command "Rscript"
+        #run LULU in R, produce curated OTU TABLE
+        Rscript -e '
+        args <- commandArgs(trailingOnly = TRUE)
+        output_path <- args[1]
+        otu_table <- args[2]
+        lulu_match_list <- args[3]
+        output_name <- basename(output_path)
+        
+        # Check if "lulu" and "dplyr" are installed
+        if (!require("lulu")) {
+          # If "lulu" is not installed, check if "devtools" is installed
+          if (!require("devtools")) {
+            # If "devtools" is not installed, install it
+            install.packages("devtools")
+          }
+          # Load "devtools" package
+          library(devtools)
+          # Install "lulu" from GitHub
+          install_github("tobiasgf/lulu")
+        }
+        if (!require("dplyr")) {
+          # If "dplyr" is not installed, install it
+          install.packages("dplyr")
+        }
+        library(lulu)
+        library(dplyr)
+        
+        # Set the working directory
+        setwd(output_path)
+        
+        # Read the data files
+        otutab <- read.csv(otu_table, sep="\t", header=TRUE, as.is=TRUE, row.names = 1)
+        matchlist <- read.table(lulu_match_list, header=FALSE, as.is=TRUE, stringsAsFactors=FALSE)
+        
+        # Run the lulu function on the data
+        curated_result <- lulu(otutab, matchlist)
+        
+        # Write the result to a file
+        write.table(curated_result$curated_table, file=paste0(output_name, "_OTU_LULU.tsv"), quote = FALSE, sep = "\t", col.names = NA)
+        
+        # Define log file name
+        log_file <- file(paste0(output_name, "_lulu_curated_log.txt"), open="wt")
+        
+        # Write headers and data to the log file
+        cat("CURATED_COUNT\tDISCARDED_COUNT\tTOTAL\n", file = log_file)
+        cat(paste(curated_result$curated_count, "\t", curated_result$discarded_count, "\t", sum(curated_result$curated_count, curated_result$discarded_count), "\n"), file = log_file, append=TRUE)
+        close(log_file)' \
+        ${OUTPUT_PATH} ${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv ${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_LULU_match_list.txt
+
+        #combine curated table with taxonomy table, remove string ';size=X'from the taxonomy file, sort both TAX and OTU files
+        sed -E 's/;size=[0-9]\+//' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" > "${OUTPUT_PATH}/temp7.tsv"
+        check_otu_ids "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_LULU.tsv" "LULU OTU table"
+        check_otu_ids "${OUTPUT_PATH}/temp7.tsv" "taxonomy file"
+        sort -k1,1 "${OUTPUT_PATH}/temp7.tsv" > "${OUTPUT_PATH}/temp8.tsv"
+        cut -f1,2,4 "${OUTPUT_PATH}/temp8.tsv" > "${OUTPUT_PATH}/temp8_cut.tsv"
+        echo -e "#OTU ID\tSINTAX\tTAX" | cat - "${OUTPUT_PATH}/temp8_cut.tsv" > "${OUTPUT_PATH}/temp8_header.tsv"
+        sort -k1,1 "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_LULU.tsv" > "${OUTPUT_PATH}/temp9.tsv"
+        sed '1s/^[^\t]*/#OTU ID/' "${OUTPUT_PATH}/temp9.tsv" > "${OUTPUT_PATH}/temp10.tsv"
+        # Join sorted OTU and TAX files into combined OTU_TAX file
+        join -1 1 -2 1 -t $'\t' "${OUTPUT_PATH}/temp10.tsv" "${OUTPUT_PATH}/temp8_header.tsv" > "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_LULU_temp.tsv"
+
+        # Process the OTU_TAX file using awk
+        awk 'BEGIN{FS=OFS="\t"} 
+        NR==1 {
+            print $0, "domain", "phylum", "class", "order", "family", "genus", "species"
+            for(i=1; i<=NF; i++) {
+                if($i == "TAX") {
+                    tax_index = i
+                }
+            }
+        }
+        NR>1 {
+            split($tax_index,a,","); 
+            for(i in a) {
+                split(a[i],b,":"); tax[b[1]]=b[2]
+            }
+            $(NF+1)=tax["d"]; $(NF+1)=tax["p"]; $(NF+1)=tax["c"]; $(NF+1)=tax["o"]; $(NF+1)=tax["f"]; $(NF+1)=tax["g"]; $(NF+1)=tax["s"]; 
+            print; delete tax
+        }' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_LULU_temp.tsv" > "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_LULU.tsv"
+        
+        # Clean up temporary files
+        rm "$OUTPUT_PATH"/*temp*
+        
+    else
+        echo "Skipping Step 4 - LULU otu-table curation"
+    fi
+    # End of pipeline
+    echo "################# pipeline done #################"
+}
+
+# Call the eNano function with the provided arguments
+eNano "$@"
