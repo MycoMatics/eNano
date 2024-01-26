@@ -342,7 +342,7 @@ eNano() {
             echo "$PWD"
             echo "for ${FILE_NAME} - start trimming adapter, primers, quality filtering, converting to fasta, and adding sample info"
 
-            porechop -i "$FILE"  --extra_end_trim 0 --check_reads 1000 --discard_middle --threads "$THREADS" > "${BARCODE_PATH}/temp1.fastq"
+            porechop -i "$FILE"  --extra_end_trim 0 --check_reads 1000 --discard_middle --adapter_threshold 97 --threads "$THREADS" > "${BARCODE_PATH}/temp1.fastq"
             cutadapt -g "$FWP"  --action=none -e "$EE" --discard-untrimmed --rc "${BARCODE_PATH}/temp1.fastq" > "${BARCODE_PATH}/temp2.fastq"
             cutadapt -g "${FWP}...${RVP}" --action=trim -e "$EE" --discard-untrimmed -m "$MIN_LENGTH" -M "$MAX_LENGTH" --times 2 "${BARCODE_PATH}/temp2.fastq" > "${BARCODE_PATH}/temp3.fastq"
             NanoFilt --logfile "${OUTPUT_PATH}/${FILE_NAME}_${Q_THRESHOLD}_nanofilt_log.txt" --quality "$Q_THRESHOLD" "${BARCODE_PATH}/temp3.fastq" > "${BARCODE_PATH}/temp4.fastq"
