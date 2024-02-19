@@ -1,7 +1,6 @@
-# eNano
+
 <img src="./eNano_logo.PNG" width="200" height="100" alt="eNano logo" title="eNano logo">
 A simple workflow for eDNA runs on basecalled, demultiplexed Nanopore data as outputted by MinKnow.  
-  
 ---
 ## Introduction
 eNano is a pipeline that generates an OTU (Operational Taxonomic Unit) table and associated taxonomy from demultiplexed Nanopore data outputted by Minknow.  
