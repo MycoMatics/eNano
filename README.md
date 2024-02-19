@@ -1,4 +1,4 @@
-# eNano  
+# eNano  ![Local Image](./eNano_logo.PNG "eNano logo")
 A simple workflow for eDNA runs on basecalled, demultiplexed Nanopore data as outputted by MinKnow.  
   
 ---
