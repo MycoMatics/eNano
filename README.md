@@ -1,5 +1,5 @@
 
-<img src="./eNano_logo.PNG" width="200" height="100" alt="eNano logo" title="eNano logo">
+<img src="./eNano_logo.PNG" width="400" height="200" alt="eNano logo" title="eNano logo">
 A simple workflow for eDNA runs on basecalled, demultiplexed Nanopore data as outputted by MinKnow.  
 ---
 ## Introduction
