@@ -56,12 +56,17 @@ check_otu_ids() {
         die "The first column of the $2 does not contain OTU IDs." 1
     fi
 }
+# Function to reverse complement
+reverse_complement() {
+    echo "$1" | tr '\n' ' ' | tr -d ' ' | rev | tr 'ATGCatgc' 'TACGtacg'
+}
+
 
 # Default values for variables
 OUTPUT_PATH="eNano_out"
 THREADS="1"
 FWP="CTTGGTCATTTAGAGGAAGTAA"
-RVP="GCATATCAATAAGCGGAGGA"
+RVP_F="TCCTCCGCTTATTGATATGC"
 MIN_LENGTH="400"
 MAX_LENGTH="1200"
 EE="0.2"
@@ -126,7 +131,7 @@ usage() {
     echo "  --output name        Foldername for the output directory (default: $OUTPUT_PATH)"
     echo "  --threads NUM        Number of threads to use (default: $THREADS)"
     echo "  --fwp SEQUENCE       Forward primer sequence for cutadapt (default=ITS1F: $FWP)"
-    echo "  --rvp SEQUENCE       Reverse primer sequence for cutadapt (default=ITS4: $RVP)"
+    echo "  --rvp SEQUENCE       Reverse primer sequence for cutadapt (default=ITS4: $RVP_F)"
     echo "  --minlength NUM      Minimum length of reads to keep in cutadapt(default: $MIN_LENGTH)"
     echo "  --maxlength NUM      Maximum length of reads to keep in cutadapt(default: $MAX_LENGTH)"
     echo "  --ee NUM             Expected error rate for cutadapt (default: $EE)"
@@ -184,7 +189,7 @@ eNano() {
                 shift 2
                 ;;
             --rvp)
-                RVP="$2"
+                RVP_F="$2"
                 shift 2
                 ;;
             --minlength)
@@ -297,7 +302,9 @@ fi
     if [ "$REQUIRED_DB_FASTA" -eq 1 ] && [ -z "$DB_FASTA" ]; then
         die "The --db flag is required unless --skip-otu is set to 1." 1
     fi
-
+    # reverse complement input reverse primer
+    RVP=$(reverse_complement "$RVP_F")
+	
     # Start pipeline -------------------------------------------------------------------------------
     echo "running with settings:"
     echo "  --fastqgz $FASTQGZ_PATH"
