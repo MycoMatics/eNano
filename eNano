@@ -36,10 +36,12 @@ install_conda() {
     source activate eNano_env
     
     # Install required dependencies
-    conda install -y nanofilt vsearch cutadapt porechop
-    
+    conda config --add channels conda-forge
+    conda install -y -c bioconda chopper vsearch cutadapt porechop    
     # Move the eNano script to the Conda environment's bin directory
+    chmod +x eNano
     mv eNano "$(conda info --root)/envs/eNano_env/bin/"
+    
     echo "eNano has been installed in the 'eNano_env' Conda environment. You can now use 'eNano' command to run the pipeline."
 }
 # Check if the --install-conda flag is provided
@@ -64,7 +66,9 @@ MIN_LENGTH="400"
 MAX_LENGTH="1200"
 EE="0.2"
 Q_THRESHOLD="20"
-CLUSTER_PERCENT="0.97"
+CLUSTER_PERCENT="0.98"
+Q_MAX="1000"
+SINTAX_CUTOFF="0.8"
 
 # Skip flags for different steps (0: do not skip, 1: skip)
 SKIP_CONCAT=0
@@ -89,7 +93,7 @@ usage() {
                - porechop trim
                - cutadapt reorient using forward primer and --rc flag
                - cutadapt trim of primers, only sequences with both forward and reverse primers are retained
-               - NanoFilt quality filter at user-defined phred score
+               - chopper quality filter at user-defined phred score
                - vsearch convert to fasta
                - sed on sequence IDs prepends barcode name and removes whitespaces
                - vsearch appends sample names for parsing OTU table
@@ -113,7 +117,7 @@ usage() {
     echo ""
     echo "Usage: $0 [[--help] (--fastqgz dir --output dir --threads value)
                              (--fwp string --rvp string --minlength value --maxlength value)
-                             (--ee value --q value --clusterid value --db file --chimref [arg])
+                             (--ee value --q value --clusterid value --db file)
                              (--skip-concat [arg] --skip-process [arg] --skip-otu [arg] --skip-lulu [arg])"
     echo ""
     echo "Options:"
@@ -126,7 +130,9 @@ usage() {
     echo "  --minlength NUM      Minimum length of reads to keep in cutadapt(default: $MIN_LENGTH)"
     echo "  --maxlength NUM      Maximum length of reads to keep in cutadapt(default: $MAX_LENGTH)"
     echo "  --ee NUM             Expected error rate for cutadapt (default: $EE)"
-    echo "  --q NUM              Quality threshold for NanoFilt (default: $Q_THRESHOLD)"
+    echo "  --q NUM              Quality threshold for chopper (default: $Q_THRESHOLD)"
+    echo "  --maxqual NUM        Max Quality threshold for chopper (default: $Q_MAX)"
+    echo "  --mintax NUM         Min certainty for sintax cutoff (default: $SINTAX_CUTOFF)"
     echo "  --clusterid NUM      OTU clustering identity threshold in vsearch (default: $CLUSTER_PERCENT)"
     echo "  --db FASTAFILE       Path to the reference FASTA file for taxonomy assignment in vsearch (required, unless --skip-otu 1)"
     echo "  --chimref            Reference-based (using --db) chimera filtering if set to 1 (default: $CHIM_REF)"
@@ -197,12 +203,20 @@ eNano() {
                 Q_THRESHOLD="$2"
                 shift 2
                 ;;
+            --maxqual)
+                Q_MAX="$2"
+                shift 2
+                ;;
+            --mintax)
+                SINTAX_CUTOFF="$2"
+                shift 2
+                ;;
             --clusterid)
                 CLUSTER_PERCENT="$2"
                 shift 2
                 ;;
             --db)
-                DB_FASTA=$(realpath "$2")
+                DB_FASTA="$2"
                 shift 2
                 ;;
             --chimref)
@@ -265,6 +279,11 @@ eNano() {
         if [[ ! "$CLUSTER_PERCENT" =~ ^[0-9]*\.?[0-9]+$ ]]; then
             die "Invalid OTU clustering identity threshold: $CLUSTER_PERCENT. It must be a number." 1
         fi
+
+        if ! [[ "$CHIM_REF" =~ ^(0|1|2)$ ]]; then
+            die "Invalid chimref value: $Q_THRESHOLD. It must be an integer: 0 or 1 or 2." 1
+
+fi
     }
     
     validate_parameters
@@ -290,6 +309,8 @@ eNano() {
     echo "  --maxlength $MAX_LENGTH"
     echo "  --ee $EE"
     echo "  --q $Q_THRESHOLD"
+    echo "  --maxqual $Q_MAX"
+    echo "  --mintax $SINTAX_CUTOFF"
     echo "  --clusterid $CLUSTER_PERCENT"
     echo "  --db $DB_FASTA"
     echo "  --chimref $CHIM_REF"
@@ -320,7 +341,7 @@ eNano() {
                 cd "$subdir" || die "Failed to enter subdirectory: $subdir" 1
                 echo "Start concatenating *.fastq.gz files of ${subdirname}"
                 # Unzip .fastq.gz files and combine into one .fastq file
-                gunzip -c *.fastq.gz > "$BARCODE_PATH/$subdirname.fastq"
+                zcat *.fastq.gz > "$BARCODE_PATH/$subdirname.fastq"
                 echo "Done with ${subdirname}"
                 # Move back to the main directory
                 cd - || die "Failed to return to the fastqgz directory" 1
@@ -345,7 +366,7 @@ eNano() {
             porechop -i "$FILE"  --extra_end_trim 0 --check_reads 1000 --discard_middle --adapter_threshold 97 --threads "$THREADS" > "${BARCODE_PATH}/temp1.fastq"
             cutadapt -g "$FWP"  --action=none -e "$EE" --discard-untrimmed --rc "${BARCODE_PATH}/temp1.fastq" > "${BARCODE_PATH}/temp2.fastq"
             cutadapt -g "${FWP}...${RVP}" --action=trim -e "$EE" --discard-untrimmed -m "$MIN_LENGTH" -M "$MAX_LENGTH" --times 2 "${BARCODE_PATH}/temp2.fastq" > "${BARCODE_PATH}/temp3.fastq"
-            NanoFilt --logfile "${OUTPUT_PATH}/${FILE_NAME}_${Q_THRESHOLD}_nanofilt_log.txt" --quality "$Q_THRESHOLD" "${BARCODE_PATH}/temp3.fastq" > "${BARCODE_PATH}/temp4.fastq"
+            cat "${BARCODE_PATH}/temp3.fastq" | chopper --quality "$Q_THRESHOLD" --maxqual "$Q_MAX" -t "$THREADS" > "${BARCODE_PATH}/temp4.fastq"
             vsearch --fastq_filter "${BARCODE_PATH}/temp4.fastq" --fastaout "${BARCODE_PATH}/temp5.fasta" --fastq_ascii 33 --fastq_qmax 93
             sed -i.bak -e "s|^>|>${FILE_NAME}_|" -e "s/;/__/g; s/ //g" "${BARCODE_PATH}/temp5.fasta"
             vsearch --fastx_filter "$BARCODE_PATH/temp5.fasta" --sample "${FILE_NAME}" --fastaout "${OUTPUT_PATH}/processed_fasta/${FILE_NAME}.fasta"
@@ -385,19 +406,19 @@ eNano() {
 
         # Get taxonomy
         echo "start taxonomic assignment"
-        vsearch --db "$DB_FASTA" --sintax "${OUTPUT_PATH}/centroids.fasta" --tabbedout "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" --sintax_cutoff 0.7
+        vsearch --db "$DB_FASTA" --sintax "${OUTPUT_PATH}/centroids.fasta" --tabbedout "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" --sintax_cutoff "$SINTAX_CUTOFF"
 
         # combine taxonomy and otu-table - remove string ';size=X' from the taxonomy file, sort both TAX and OTU files
-        sed -E 's/;size=[0-9]+//' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" > "${OUTPUT_PATH}/temp3.tsv"
+        sed 's/;size=[0-9]\+//' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" > "${OUTPUT_PATH}/temp3.tsv"
         check_otu_ids "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv" "OTU table"
         check_otu_ids "${OUTPUT_PATH}/temp3.tsv" "taxonomy file"
         sort -k1,1 "${OUTPUT_PATH}/temp3.tsv" > "${OUTPUT_PATH}/temp4.tsv"
         cut -f1,2,4 "${OUTPUT_PATH}/temp4.tsv" > "${OUTPUT_PATH}/temp4_cut.tsv"
-        echo -e "#OTU ID\tSINTAX\tTAX" | cat - "${OUTPUT_PATH}/temp4_cut.tsv" > "${OUTPUT_PATH}/temp4_header.tsv"
+        sed -i '1i #OTU ID\tSINTAX\tTAX' "${OUTPUT_PATH}/temp4_cut.tsv"
         sort -k1,1 "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv" > "${OUTPUT_PATH}/temp5.tsv"
         
         # Join sorted OTU and TAX files into combined OTU_TAX file
-        join -1 1 -2 1 -t $'\t' "${OUTPUT_PATH}/temp5.tsv" "${OUTPUT_PATH}/temp4_header.tsv" > "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_temp.tsv"
+        join -1 1 -2 1 -t $'\t' "${OUTPUT_PATH}/temp5.tsv" "${OUTPUT_PATH}/temp4_cut.tsv" > "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_temp.tsv"
         
         # Process the OTU_TAX file using awk
         awk 'BEGIN{FS=OFS="\t"} 
@@ -419,9 +440,9 @@ eNano() {
         }' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_temp.tsv" > "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX.tsv"
         
         # LULU clean-up - Produce a match-list with vsearch, remove string ';size=X' from match file for processing in LULU
-        echo "producing LULU match list"
-        sed -E "s/;size=[0-9]\+//" "${OUTPUT_PATH}/centroids.fasta" > "${OUTPUT_PATH}/temp6.fasta"
-        vsearch --usearch_global "${OUTPUT_PATH}/temp6.fasta"  --db "${OUTPUT_PATH}/temp6.fasta"  --self --id .84 --iddef 1 --userout "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_LULU_match_list.txt" -userfields query+target+id --maxaccepts 0 --query_cov .9 --maxhits 10
+         echo "producing LULU match list"
+         sed "s/;size=[0-9]\+//" "${OUTPUT_PATH}/centroids.fasta" > "${OUTPUT_PATH}/temp6.fasta"
+         vsearch --usearch_global "${OUTPUT_PATH}/temp6.fasta"  --db "${OUTPUT_PATH}/temp6.fasta"  --self --id .84 --iddef 1 --userout "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_LULU_match_list.txt" -userfields query+target+id --maxaccepts 0 --query_cov .9 --maxhits 10
         
         # Remove temporary files
         rm "$OUTPUT_PATH"/*temp*
@@ -483,17 +504,17 @@ eNano() {
         ${OUTPUT_PATH} ${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv ${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_LULU_match_list.txt
 
         #combine curated table with taxonomy table, remove string ';size=X'from the taxonomy file, sort both TAX and OTU files
-        sed -E 's/;size=[0-9]\+//' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" > "${OUTPUT_PATH}/temp7.tsv"
+        sed 's/;size=[0-9]\+//' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" > "${OUTPUT_PATH}/temp7.tsv"
         check_otu_ids "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_LULU.tsv" "LULU OTU table"
         check_otu_ids "${OUTPUT_PATH}/temp7.tsv" "taxonomy file"
         sort -k1,1 "${OUTPUT_PATH}/temp7.tsv" > "${OUTPUT_PATH}/temp8.tsv"
         cut -f1,2,4 "${OUTPUT_PATH}/temp8.tsv" > "${OUTPUT_PATH}/temp8_cut.tsv"
-        echo -e "#OTU ID\tSINTAX\tTAX" | cat - "${OUTPUT_PATH}/temp8_cut.tsv" > "${OUTPUT_PATH}/temp8_header.tsv"
+        sed -i '1i #OTU ID\tSINTAX\tTAX' "${OUTPUT_PATH}/temp8_cut.tsv"
         sort -k1,1 "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_LULU.tsv" > "${OUTPUT_PATH}/temp9.tsv"
         sed '1s/^[^\t]*/#OTU ID/' "${OUTPUT_PATH}/temp9.tsv" > "${OUTPUT_PATH}/temp10.tsv"
         # Join sorted OTU and TAX files into combined OTU_TAX file
-        join -1 1 -2 1 -t $'\t' "${OUTPUT_PATH}/temp10.tsv" "${OUTPUT_PATH}/temp8_header.tsv" > "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_LULU_temp.tsv"
-
+        join -1 1 -2 1 -t $'\t' "${OUTPUT_PATH}/temp10.tsv" "${OUTPUT_PATH}/temp8_cut.tsv" > "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_LULU_temp.tsv"
+        
         # Process the OTU_TAX file using awk
         awk 'BEGIN{FS=OFS="\t"} 
         NR==1 {
