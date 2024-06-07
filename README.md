@@ -15,7 +15,7 @@ The pipeline consists of four consecutive steps:
    - Porechop trimming  
    - Cutadapt reorientation using forward primer and --rc flag  
    - Cutadapt trim of primers, only sequences with both forward and reverse primers are retained  
-   - NanoFilt quality filter at user-defined phred score  
+   - Chopper quality filter at user-defined phred score  
    - Vsearch conversion to fasta  
    - Sed on sequence IDs prepends barcode name and removes whitespaces  
    - Vsearch appends sample names for parsing OTU table  
