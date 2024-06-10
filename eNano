@@ -56,17 +56,12 @@ check_otu_ids() {
         die "The first column of the $2 does not contain OTU IDs." 1
     fi
 }
-# Function to reverse complement
-reverse_complement() {
-    echo "$1" | tr '\n' ' ' | tr -d ' ' | rev | tr 'ATGCatgc' 'TACGtacg'
-}
-
 
 # Default values for variables
 OUTPUT_PATH="eNano_out"
 THREADS="1"
 FWP="CTTGGTCATTTAGAGGAAGTAA"
-RVP_F="TCCTCCGCTTATTGATATGC"
+RVP="GCATATCAATAAGCGGAGGA"
 MIN_LENGTH="400"
 MAX_LENGTH="1200"
 EE="0.2"
@@ -81,6 +76,7 @@ SKIP_PROCESS=0
 SKIP_OTU=0
 SKIP_LULU=1
 CHIM_REF=0
+SKIP_SP=1
 
 # Set required variables
 REQUIRED_FASTQGZ_PATH="1"
@@ -118,12 +114,17 @@ usage() {
                  + run lulu and output curated table  
                  + write the number of curated OTUs to log file  
                - join curated otu-table with taxonomy table  
-"
+            5) uses OTU table from 3 and/or LULU-curated table from step 4 to construct a 'Species-Hypothesis' table - outputted in the main folder.
+               - runs R from terminal
+                 + get output directory, load otu-table and match list  
+                 + load stringr and dplyr 
+                 + load and run function to agrgegate OTUs at Species level
     echo ""
     echo "Usage: $0 [[--help] (--fastqgz dir --output dir --threads value)
                              (--fwp string --rvp string --minlength value --maxlength value)
                              (--ee value --q value --clusterid value --db file)
-                             (--skip-concat [arg] --skip-process [arg] --skip-otu [arg] --skip-lulu [arg])"
+                             (--skip-concat [arg] --skip-process [arg] --skip-otu [arg])
+                             (--skip-lulu [arg] --skip-sp [arg])"
     echo ""
     echo "Options:"
     echo "  -h, --help           Display this help message"
@@ -131,7 +132,7 @@ usage() {
     echo "  --output name        Foldername for the output directory (default: $OUTPUT_PATH)"
     echo "  --threads NUM        Number of threads to use (default: $THREADS)"
     echo "  --fwp SEQUENCE       Forward primer sequence for cutadapt (default=ITS1F: $FWP)"
-    echo "  --rvp SEQUENCE       Reverse primer sequence for cutadapt (default=ITS4: $RVP_F)"
+    echo "  --rvp SEQUENCE       Reverse primer sequence for cutadapt (default=ITS4: $RVP)"
     echo "  --minlength NUM      Minimum length of reads to keep in cutadapt(default: $MIN_LENGTH)"
     echo "  --maxlength NUM      Maximum length of reads to keep in cutadapt(default: $MAX_LENGTH)"
     echo "  --ee NUM             Expected error rate for cutadapt (default: $EE)"
@@ -145,6 +146,7 @@ usage() {
     echo "  --skip-process       Skip the processing step if set to 1 (default: $SKIP_PROCESS)"
     echo "  --skip-otu           Skip the OTU clustering and taxonomy assignment step if set to 1 (default: $SKIP_OTU)"
     echo "  --skip-lulu          Performs the LULU otu curation step if set to 0 (default: $SKIP_LULU)"
+    echo "  --skip-sp            Aggregates otus at the species level step if set to 0 (default: $SKIP_SP)"
     echo "  --install-conda      Installs eNano and adds it to /envs/eNano_env/bin/"
     exit 1
 }
@@ -189,7 +191,7 @@ eNano() {
                 shift 2
                 ;;
             --rvp)
-                RVP_F="$2"
+                RVP="$2"
                 shift 2
                 ;;
             --minlength)
@@ -228,7 +230,7 @@ eNano() {
                 CHIM_REF="$2"
                 shift 2
                 ;;
-                --skip-concat)
+            --skip--concat)
                 SKIP_CONCAT="$2"
                 # If --skip-concat is set to 1, fastqgz flag is not required
                 if [ "$SKIP_CONCAT" -eq 1 ]; then
@@ -250,6 +252,10 @@ eNano() {
                 ;;
             --skip-lulu)
                 SKIP_LULU="$2"
+                shift 2
+                ;;
+            --skip-sp)
+                $SKIP_SP="$2"
                 shift 2
                 ;;
             *)
@@ -302,9 +308,7 @@ fi
     if [ "$REQUIRED_DB_FASTA" -eq 1 ] && [ -z "$DB_FASTA" ]; then
         die "The --db flag is required unless --skip-otu is set to 1." 1
     fi
-    # reverse complement input reverse primer
-    RVP=$(reverse_complement "$RVP_F")
-	
+
     # Start pipeline -------------------------------------------------------------------------------
     echo "running with settings:"
     echo "  --fastqgz $FASTQGZ_PATH"
@@ -325,6 +329,7 @@ fi
     echo "  --skip-process $SKIP_PROCESS"
     echo "  --skip-otu $SKIP_OTU"
     echo "  --skip-lulu $SKIP_LULU"
+    echo "  --skip-sp $SKIP_SP"
 
     echo "#################################################### starting pipeline for Nanopore simplex data #######################################################"
 
@@ -405,7 +410,7 @@ fi
             vsearch --uchime_denovo "${OUTPUT_PATH}/barcodes.fasta" --nonchimeras "${OUTPUT_PATH}/temp1.fasta"
         fi
 
-        # Extract centroid sequences of OTUs, clustered on 97% identity threshold with the standard algorithm, then sort by size
+        # Extract centroid sequences of OTUs, clustered on id% identity threshold with the standard algorithm, then sort by size
         echo "start OTU clustering"
         vsearch --cluster_smallmem "${OUTPUT_PATH}/temp1.fasta" --usersort --relabel OTU_ --centroids "${OUTPUT_PATH}/temp2.fasta" --otutabout "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv" --sizeout --log "${OUTPUT_PATH}/clusterlog.txt" --id "$CLUSTER_PERCENT" --threads "$THREADS"
         vsearch --sortbysize "${OUTPUT_PATH}/temp2.fasta" --output "${OUTPUT_PATH}/centroids.fasta"
@@ -461,6 +466,7 @@ fi
     # Step 4: LULU otu-table curation, produce match-list and run LULU in R from script
     if [ "$SKIP_LULU" -eq 0 ]; then
         check_command "Rscript"
+        echo "starting Step 4 - LULU curation"
         #run LULU in R, produce curated OTU TABLE
         Rscript -e '
         args <- commandArgs(trailingOnly = TRUE)
@@ -485,8 +491,13 @@ fi
           # If "dplyr" is not installed, install it
           install.packages("dplyr")
         }
+         if (!require("stringr")) {
+          # If "stringr" is not installed, install it
+          install.packages("stringr")
+        }
         library(lulu)
         library(dplyr)
+        library(stringr)
         
         # Set the working directory
         setwd(output_path)
@@ -547,8 +558,110 @@ fi
     else
         echo "Skipping Step 4 - LULU otu-table curation"
     fi
+    
+    # Step 5: Species-table creation in R
+    if [ "$SKIP_SP" -eq 0 ]; then
+        check_command "Rscript"
+        echo "starting Step 5 - Species-table creation"
+        #run SH_table in R, produce Species-table
+        Rscript -e '
+        args <- commandArgs(trailingOnly = TRUE)
+        output_path <- args[1]
+        otu_table <- args[2]
+        lulu_table <- args[3]
+        output_name <- basename(output_path)
+        
+        # Check if "stringr" and "dplyr" are installed
+
+        if (!require("dplyr")) {
+          # If "dplyr" is not installed, install it
+          install.packages("dplyr")
+        }
+         if (!require("stringr")) {
+          # If "stringr" is not installed, install it
+          install.packages("stringr")
+        }
+        library(dplyr)
+        library(stringr)
+                
+        # Set the working directory
+        setwd(output_path)
+        #create SH-function to aggregate at species level using SINTAX column
+        SH_table <- function(otu_df){
+          barcode_cols <- names(otu_df)[grepl("^barcode", names(otu_df))]
+          otucol <- names(otu_df)[grepl("OTU", names(otu_df))]
+          sintaxcol <- names(otu_df)[grepl("^SINTAX", names(otu_df))]
+          # Extract taxonomic information and confidences for each level
+          tmp_df <- otu_df %>%
+            select(otucol, barcode_cols, sintaxcol) %>%
+            mutate(
+              domain = ifelse(str_detect(SINTAX, "d:"), str_extract(SINTAX, "d:[^,]+"), NA),
+              domain_confidence = ifelse(is.na(domain), NA, as.numeric(str_extract(domain, "(?<=\\()\\d+\\.\\d+(?=\\))"))),
+              domain = ifelse(is.na(domain), NA, str_replace(domain, "\\(.*\\)", "")), # Remove confidence scores and parentheses
+              domain = ifelse(is.na(domain), NA, str_remove(domain, "d:")),  
+              
+              phylum = ifelse(str_detect(SINTAX, "p:"), str_extract(SINTAX, "p:[^,]+"), NA),
+              phylum_confidence = ifelse(is.na(phylum), NA, as.numeric(str_extract(phylum, "(?<=\\()\\d+\\.\\d+(?=\\))"))),
+              phylum = ifelse(is.na(phylum), NA, str_replace(phylum, "\\(.*\\)", "")), # Remove confidence scores and parentheses
+              phylum = ifelse(is.na(phylum), NA, str_remove(phylum, "p:")),  
+              
+              class = ifelse(str_detect(SINTAX, "c:"), str_extract(SINTAX, "c:[^,]+"), NA),
+              class_confidence = ifelse(is.na(class), NA, as.numeric(str_extract(class, "(?<=\\()\\d+\\.\\d+(?=\\))"))),
+              class = ifelse(is.na(class), NA, str_replace(class, "\\(.*\\)", "")), # Remove confidence scores and parentheses
+              class = ifelse(is.na(class), NA, str_remove(class, "c:")),
+              
+              order = ifelse(str_detect(SINTAX, "o:"), str_extract(SINTAX, "o:[^,]+"), NA),
+              order_confidence = ifelse(is.na(order), NA, as.numeric(str_extract(order, "(?<=\\()\\d+\\.\\d+(?=\\))"))),
+              order = ifelse(is.na(order), NA, str_replace(order, "\\(.*\\)", "")),
+              order = ifelse(is.na(order), NA, str_remove(order, "o:")),
+              
+              family = ifelse(str_detect(SINTAX, "f:"), str_extract(SINTAX, "f:[^,]+"), NA),
+              family_confidence = ifelse(is.na(family), NA, as.numeric(str_extract(family, "(?<=\\()\\d+\\.\\d+(?=\\))"))),
+              family = ifelse(is.na(family), NA, str_replace(family, "\\(.*\\)", "")),
+              family = ifelse(is.na(family), NA, str_remove(family, "f:")),
+              
+              genus = ifelse(str_detect(SINTAX, "g:"), str_extract(SINTAX, "g:[^,]+"), NA),
+              genus_confidence = ifelse(is.na(genus), NA, as.numeric(str_extract(genus, "(?<=\\()\\d+\\.\\d+(?=\\))"))),
+              genus = ifelse(is.na(genus), NA, str_replace(genus, "\\(.*\\)", "")),
+              genus = ifelse(is.na(genus), NA, str_remove(genus, "g:")),
+              
+              species = ifelse(str_detect(SINTAX, "s:"), str_extract(SINTAX, "s:[^,]+"), NA),
+              species_confidence = ifelse(is.na(species), NA, as.numeric(str_extract(species, "(?<=\\()\\d+\\.\\d+(?=\\))"))),
+              species = ifelse(is.na(species), NA, str_replace(species, "\\(.*\\)", "")),
+              species = ifelse(is.na(species), NA, str_remove(species, "s:"))
+            )  %>% 
+            mutate(across(all_of(barcode_cols), as.numeric)) %>%
+            mutate(abundance = rowSums(across(all_of(barcode_cols)), na.rm = TRUE)) %>% 
+            mutate( Include = (abundance == 1 & species_confidence >= 0.95) | (abundance > 1 & species_confidence >= 0.80)) %>%
+            filter(Include) %>% 
+              select(-Include) %>% 
+            group_by(species) %>%
+            summarize(across(all_of(barcode_cols), sum, na.rm = TRUE)) %>%
+            ungroup()
+          return(tmp_df)
+        }
+        # Read the data files
+        otutab <- read.csv(otu_table, sep="\t", header=TRUE, as.is=TRUE, row.names = 1)
+        sh_otu_result <- SH_table(otutab)
+        write.table(sh_otu_result, file=paste0(output_name, "_OTU_SP_TABLE.tsv"), quote = FALSE, sep = "\t", col.names = NA)
+        
+        # Check if LULU table exists and process it
+        if(file.exists(lulu_table)) {
+          lulutab <- tryCatch({
+              read.csv(lulu_table, sep="\t", header=TRUE, as.is=TRUE, row.names = 1)
+          }, error=function(e) stop("Failed to read LULU table: ", e))
+          sh_lulu_result <- SH_table(lulutab)
+          write.table(sh_lulu_result, file=paste0("LULU_SP_TABLE.tsv"), quote = FALSE, sep = "\t", col.names = NA)
+        } else {
+          cat("LULU table does not exist. Skipping LULU data processing.\n")
+        }
+       ' \
+        ${OUTPUT_PATH} "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX.tsv" "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_LULU.tsv"
+    else
+        echo "Skipping Step 5 - Species-table creation"
     # End of pipeline
     echo "################# pipeline done #################"
+    fi
 }
 
 # Call the eNano function with the provided arguments
