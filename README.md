@@ -39,8 +39,13 @@ The pipeline consists of four consecutive steps:
       + Load lulu and dplyr (and install if required via devtools)  
       + Run lulu and output curated table  
       + Write the number of curated OTUs to log file  
-   - Join curated otu-table with taxonomy table  
-
+   - Join curated otu-table with taxonomy table
+     
+5) **aggregation at species-level** uses OTU table from steps 3 and 4 to aggregate OTUs at species-level - outputted in the main folder.
+    - runs R from terminal
+      + get output directory, load otu-table and match list  
+        + load stringr and dplyr 
+        + load and run SH_table function to agrgegate OTUs at Species level
 ---
 ## Installation  
 **add how to wget**  
@@ -88,11 +93,18 @@ eNano: Pipeline that generates an OTU table and associated taxonomy from demulti
                  + load lulu and dplyr (and install if required via devtools)  
                  + run lulu and output curated table  
                  + write the number of curated OTUs to log file  
-               - join curated otu-table with taxonomy table  
+               - join curated otu-table with taxonomy table
+            5) uses OTU table from steps 3 and 4 to aggregate OTUs at species-level - outputted in the main folder.
+               - runs R from terminal
+                 + get output directory, load otu-table and match list  
+                 + load stringr and dplyr 
+                 + load and run SH_table function to agrgegate OTUs at SH level
+
 Usage: ./eNano [[--help] (--fastqgz dir --output dir --threads value)  
                              (--fwp string --rvp string --minlength value --maxlength value)  
                              (--ee value --q value --clusterid value --db file --chimref [arg])  
-                             (--skip-concat [arg] --skip-process [arg] --skip-otu [arg] --skip-lulu [arg])  
+                             (--skip-concat [arg] --skip-process [arg] --skip-otu [arg])
+                             (--skip-lulu [arg] --skip-sh [arg])" 
 Options:  
   -h, --help           Display this help message  
   --fastqgz PATH       Path to the directory with fastq.gz files (required, unless --skip-concat 1)  
@@ -110,7 +122,8 @@ Options:
   --skip-concat        Skip the concatenation step if set to 1 (default: 0)  
   --skip-process       Skip the processing step if set to 1 (default: 0)  
   --skip-otu           Skip the OTU clustering and taxonomy assignment step if set to 1 (default: 0)  
-  --skip-lulu          Performs the LULU otu curation step if set to 0 (default: 1)"  
+  --skip-lulu          Performs the LULU otu curation step if set to 0 (default: 1)
+  --skip-sp            Aggregates otus at the Species-level step if set to 0 (default: 1)
   --install-conda      Installs eNano and adds it to /envs/eNano_env/bin/  
 ```
   
