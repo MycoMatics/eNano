@@ -255,7 +255,7 @@ eNano() {
                 shift 2
                 ;;
             --skip-sp)
-                $SKIP_SP="$2"
+                SKIP_SP="$2"
                 shift 2
                 ;;
             *)
