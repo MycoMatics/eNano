@@ -49,7 +49,7 @@ The pipeline consists of four consecutive steps:
 ---
 ## Installation  
 **add how to wget**  
-Download the [eNano file] (https://github.com/givdieri/eNano/blob/main/eNano) and install a conda environment that has the eNano function and its dependencies (vsearch, nanofilt, cutadapt & porechop) installed:  
+Download the [eNano file](https://github.com/givdieri/eNano/blob/main/eNano) and install a conda environment that has the eNano function and its dependencies (vsearch, nanofilt, cutadapt & porechop) installed:  
 ```$ cd /path/to/eNano_directory```  
 ```$ ./eNano --install-conda ```  
 
