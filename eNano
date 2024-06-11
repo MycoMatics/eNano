@@ -643,7 +643,7 @@ fi
         # Read the data files
         otutab <- read.csv(otu_table, sep="\t", header=TRUE, as.is=TRUE, row.names = 1)
         sh_otu_result <- SH_table(otutab)
-        write.table(sh_otu_result, file=paste0(output_name, "_OTU_SP_TABLE.tsv"), quote = FALSE, sep = "\t", col.names = NA)
+        write.table(sh_otu_result, file=paste0(output_name, "_OTU_SP.tsv"), quote = FALSE, sep = "\t", col.names = NA)
         
         # Check if LULU table exists and process it
         if(file.exists(lulu_table)) {
@@ -651,7 +651,7 @@ fi
               read.csv(lulu_table, sep="\t", header=TRUE, as.is=TRUE, row.names = 1)
           }, error=function(e) stop("Failed to read LULU table: ", e))
           sh_lulu_result <- SH_table(lulutab)
-          write.table(sh_lulu_result, file=paste0("LULU_SP_TABLE.tsv"), quote = FALSE, sep = "\t", col.names = NA)
+          write.table(sh_lulu_result, file=paste0("LULU_SP.tsv"), quote = FALSE, sep = "\t", col.names = NA)
         } else {
           cat("LULU table does not exist. Skipping LULU data processing.\n")
         }
