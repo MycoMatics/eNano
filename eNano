@@ -30,14 +30,11 @@ install_conda() {
     fi
 
     # Create a new Conda environment for eNano (change 'env_name' to the desired name)
-    conda create -y -n eNano_env
+    conda create -f eNano_env.yml
     
     # Activate the Conda environment
     source activate eNano_env
     
-    # Install required dependencies
-    conda config --add channels conda-forge
-    conda install -y -c bioconda chopper vsearch cutadapt porechop    
     # Move the eNano script to the Conda environment's bin directory
     chmod +x eNano
     mv eNano "$(conda info --root)/envs/eNano_env/bin/"
@@ -120,6 +117,7 @@ usage() {
                  + load stringr and dplyr 
                  + load and run function to agrgegate OTUs at Species level
     "
+    echo ""
     echo "Usage: $0 [[--help] (--fastqgz dir --output dir --threads value)
                              (--fwp string --rvp string --minlength value --maxlength value)
                              (--ee value --q value --clusterid value --db file)
