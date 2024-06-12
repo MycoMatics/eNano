@@ -54,7 +54,7 @@ The pipeline consists of four consecutive steps:
 
 Clone the github repo
 ```shell
-git clone -b conda-yml-install https://github.com/MycoMatics/eNano.git
+git clone https://github.com/MycoMatics/eNano.git
 ```  
 
 ```$ cd /path/to/eNano_directory```  
