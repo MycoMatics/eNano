@@ -116,7 +116,7 @@ usage() {
                  + get output directory, load otu-table and match list  
                  + load stringr and dplyr 
                  + load and run function to agrgegate OTUs at Species level
-    echo ""
+    "
     echo "Usage: $0 [[--help] (--fastqgz dir --output dir --threads value)
                              (--fwp string --rvp string --minlength value --maxlength value)
                              (--ee value --q value --clusterid value --db file)
