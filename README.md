@@ -53,9 +53,10 @@ The pipeline consists of four consecutive steps:
 ## Installation  
 
 Clone the github repo
-```$ git clone -b conda-yml-install https://github.com/MycoMatics/eNano.git
-```
-#Download the [eNano file](https://github.com/givdieri/eNano/blob/main/eNano) and install a conda environment that has the eNano function and its dependencies (vsearch, nanofilt, cutadapt & porechop) installed:  
+```shell
+git clone -b conda-yml-install https://github.com/MycoMatics/eNano.git
+```  
+
 ```$ cd /path/to/eNano_directory```  
 ```$ ./eNano --install-conda ```  
 
