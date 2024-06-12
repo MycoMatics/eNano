@@ -29,21 +29,12 @@ install_conda() {
         die "'eNano_env' Conda environment already exists. Please remove it or choose a different environment name." 1
     fi
 
-    # Create a new Conda environment for eNano (change 'env_name' to the desired name)
-    conda create -y -n eNano_env
+    # Create a new Conda environment for eNano and dependencies (change 'env_name' to the desired name)
+    conda env create -f eNano_env.yml
     
     # Activate the Conda environment
     source activate eNano_env
-		
-    ##OLD conda installation
-    # Install required dependencies
-    #conda config --add channels conda-forge
-    #conda install -y -c bioconda chopper vsearch cutadapt porechop
-		
-		#New Conda installation from yml file in githubrepo
-		
-		conda env create -f ./eNano_env.yml
-		
+
     # Move the eNano script to the Conda environment's bin directory
     chmod +x eNano
     mv eNano "$(conda info --root)/envs/eNano_env/bin/"
