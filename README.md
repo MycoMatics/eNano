@@ -46,7 +46,7 @@ The pipeline consists of four consecutive steps:
       + get output directory, load otu-table and match list  
         + load stringr and dplyr 
         + load and run SH_table function to agrgegate OTUs at Species level
-### Wrokflow  
+### Workflow  
 <img src="./enano_workflow.png" width="720" height="1400" alt="eNano workflow" title="eNano workflow">  
 
 ---
