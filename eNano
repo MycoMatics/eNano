@@ -154,7 +154,7 @@ check_dependencies() {
     check_command "zcat"
     check_command "porechop"
     check_command "cutadapt"
-    check_command "NanoFilt"
+    check_command "chopper"
     check_command "vsearch"
 }
 #check dependencies
