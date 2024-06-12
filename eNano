@@ -34,10 +34,16 @@ install_conda() {
     
     # Activate the Conda environment
     source activate eNano_env
-    
+		
+    ##OLD conda installation
     # Install required dependencies
-    conda config --add channels conda-forge
-    conda install -y -c bioconda chopper vsearch cutadapt porechop    
+    #conda config --add channels conda-forge
+    #conda install -y -c bioconda chopper vsearch cutadapt porechop
+		
+		#New Conda installation from yml file in githubrepo
+		
+		conda env create -f ./eNano_env.yml
+		
     # Move the eNano script to the Conda environment's bin directory
     chmod +x eNano
     mv eNano "$(conda info --root)/envs/eNano_env/bin/"
