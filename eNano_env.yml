@@ -4,7 +4,7 @@ channels:
   - bioconda
   - defaults
 dependencies:
-- _libgcc_mutex=0.1=conda_forge
+  - _libgcc_mutex=0.1=conda_forge
   - _openmp_mutex=4.5=2_gnu
   - binutils_impl_linux-64=2.40=ha1999f0_3
   - bzip2=1.0.8=hd590300_5
