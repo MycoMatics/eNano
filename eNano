@@ -30,7 +30,7 @@ install_conda() {
     fi
 
     # Create a new Conda environment for eNano (change 'env_name' to the desired name)
-    conda create -f eNano_env.yml
+    conda env create -f eNano_env.yml
     
     # Activate the Conda environment
     source activate eNano_env
