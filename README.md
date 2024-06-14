@@ -58,10 +58,8 @@ git clone https://github.com/MycoMatics/eNano.git
 ```  
 
 ```$ cd /path/to/eNano_directory```  
+```$ chmod +x eNano``` 
 ```$ ./eNano --install-conda ```  
-
-If this is not working, try changing file permissions to make it executable and run the first command again:  
-```$ chmod +x eNano```  
 
 To activate the conda environment, run:  
 ```$ source activate```  
