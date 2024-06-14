@@ -58,7 +58,7 @@ git clone https://github.com/MycoMatics/eNano.git
 ```  
 
 ```$ cd /path/to/eNano_directory```  
-```$ chmod +x eNano``` 
+```$ chmod +x eNano```  
 ```$ ./eNano --install-conda ```  
 
 To activate the conda environment, run:  
