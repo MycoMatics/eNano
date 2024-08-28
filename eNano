@@ -19,27 +19,27 @@ check_command() {
     command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1" 1
 }
 
-# Check if Conda is installed and install eNano_env environment
+# Check if Conda is installed and install eNano_env2 environment
 install_conda() {
     # Check if Conda is installed
     check_command "conda"
     
-    # Check if the 'eNano_env' environment already exists
-    if conda info --envs | grep -q "eNano_env"; then
-        die "'eNano_env' Conda environment already exists. Please remove it or choose a different environment name." 1
+    # Check if the 'eNano_env2' environment already exists
+    if conda info --envs | grep -q "eNano_env2"; then
+        die "'eNano_env2' Conda environment already exists. Please remove it or choose a different environment name." 1
     fi
 
     # Create a new Conda environment for eNano (change 'env_name' to the desired name)
-    conda env create -f eNano_env.yml
+    conda env create -f eNano_env2.yml
     
     # Activate the Conda environment
-    source activate eNano_env
+    source activate eNano_env2
     
     # Move the eNano script to the Conda environment's bin directory
     chmod +x eNano
-    mv eNano "$(conda info --root)/envs/eNano_env/bin/"
+    mv eNano "$(conda info --root)/envs/eNano_env2/bin/"
     
-    echo "eNano has been installed in the 'eNano_env' Conda environment. You can now use 'eNano' command to run the pipeline."
+    echo "eNano has been installed in the 'eNano_env2' Conda environment. You can now use 'eNano' command to run the pipeline."
 }
 # Check if the --install-conda flag is provided
 if [ "$1" = "--install-conda" ]; then
@@ -81,7 +81,7 @@ REQUIRED_DB_FASTA="1"
 
 # Function to display usage information
 usage() {
-    echo "./eNano --install-conda       installs eNano in the eNano_env conda environment and adds it to /envs/eNano_env/bin/ (only needed for initial install)"
+    echo "./eNano --install-conda       installs eNano in the eNano_env2 conda environment and adds it to /envs/eNano_env2/bin/ (only needed for initial install)"
     echo ""
     echo "eNano: Pipeline that generates an OTU table and associated taxonomy from demultiplexed Nanopore data outputted by Minknow.
           The input usually is a 'fastq_pass' directory with barcode01 - barcode96 subdirectories, each containing fastq files that passed some user-defined quality threshold.
@@ -145,7 +145,7 @@ usage() {
     echo "  --skip-otu           Skip the OTU clustering and taxonomy assignment step if set to 1 (default: $SKIP_OTU)"
     echo "  --skip-lulu          Performs the LULU otu curation step if set to 0 (default: $SKIP_LULU)"
     echo "  --skip-sp            Aggregates otus at the species level step if set to 0 (default: $SKIP_SP)"
-    echo "  --install-conda      Installs eNano and adds it to /envs/eNano_env/bin/"
+    echo "  --install-conda      Installs eNano and adds it to /envs/eNano_env2/bin/"
     exit 1
 }
 
@@ -463,61 +463,11 @@ fi
 
     # Step 4: LULU otu-table curation, produce match-list and run LULU in R from script
     if [ "$SKIP_LULU" -eq 0 ]; then
-        check_command "Rscript"
-        echo "starting Step 4 - LULU curation"
-        #run LULU in R, produce curated OTU TABLE
-        Rscript -e '
-        args <- commandArgs(trailingOnly = TRUE)
-        output_path <- args[1]
-        otu_table <- args[2]
-        lulu_match_list <- args[3]
-        output_name <- basename(output_path)
-        
-        # Check if "lulu" and "dplyr" are installed
-        if (!require("lulu")) {
-          # If "lulu" is not installed, check if "devtools" is installed
-          if (!require("devtools")) {
-            # If "devtools" is not installed, install it
-            install.packages("devtools")
-          }
-          # Load "devtools" package
-          library(devtools)
-          # Install "lulu" from GitHub
-          install_github("tobiasgf/lulu")
-        }
-        if (!require("dplyr")) {
-          # If "dplyr" is not installed, install it
-          install.packages("dplyr")
-        }
-         if (!require("stringr")) {
-          # If "stringr" is not installed, install it
-          install.packages("stringr")
-        }
-        library(lulu)
-        library(dplyr)
-        library(stringr)
-        
-        # Set the working directory
-        setwd(output_path)
-        
-        # Read the data files
-        otutab <- read.csv(otu_table, sep="\t", header=TRUE, as.is=TRUE, row.names = 1)
-        matchlist <- read.table(lulu_match_list, header=FALSE, as.is=TRUE, stringsAsFactors=FALSE)
-        
-        # Run the lulu function on the data
-        curated_result <- lulu(otutab, matchlist)
-        
-        # Write the result to a file
-        write.table(curated_result$curated_table, file=paste0(output_name, "_OTU_LULU.tsv"), quote = FALSE, sep = "\t", col.names = NA)
-        
-        # Define log file name
-        log_file <- file(paste0(output_name, "_lulu_curated_log.txt"), open="wt")
-        
-        # Write headers and data to the log file
-        cat("CURATED_COUNT\tDISCARDED_COUNT\tTOTAL\n", file = log_file)
-        cat(paste(curated_result$curated_count, "\t", curated_result$discarded_count, "\t", sum(curated_result$curated_count, curated_result$discarded_count), "\n"), file = log_file, append=TRUE)
-        close(log_file)' \
-        ${OUTPUT_PATH} ${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv ${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_LULU_match_list.txt
+        check_command "mumu"
+        echo "Starting Step 4 - MUMU curation"
+
+        # Run MUMU with specified input and output files
+        mumu --otu_table "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv" --match_list "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_LULU_match_list.txt" --log "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_lulu_curated_log.txt" --new_otu_table "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_LULU.tsv"
 
         #combine curated table with taxonomy table, remove string ';size=X'from the taxonomy file, sort both TAX and OTU files
         sed 's/;size=[0-9]\+//' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" > "${OUTPUT_PATH}/temp7.tsv"
