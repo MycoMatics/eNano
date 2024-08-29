@@ -23,18 +23,30 @@ check_command() {
 install_conda() {
     # Check if Conda is installed
     check_command "conda"
-    
+    TMP_DIR=$(pwd)
     # Check if the 'eNano_env2' environment already exists
     if conda info --envs | grep -q "eNano_env2"; then
         die "'eNano_env2' Conda environment already exists. Please remove it or choose a different environment name." 1
     fi
 
-    # Create a new Conda environment for eNano (change 'env_name' to the desired name)
-    conda env create -f eNano_env2.yml
+    # Create and update the Conda environment using the YAML file
+    conda env create -n eNano_env2 -f eNano_env2.yml || die "Failed to create or update Conda environment." 1
     
-    # Activate the Conda environment
-    source activate eNano_env2
+    # Activate the Conda environment using conda activate
+    eval "$(conda shell.bash hook)"
+    conda activate eNano_env2 || die "Failed to activate Conda environment." 1
     
+    #adjustments for MUMU
+    conda install -n eNano_env2 gcc_linux-64>=10 gxx_linux-64>=10 || die "Failed to install GCC 11 in Conda environment." 1
+
+    # Install MUMU within the Conda environment - first maek sure the correct compilers are used
+    MUMU_DIR=$(conda info --base)/envs/eNano_env2/mumu
+    cp -r mumu $(conda info --base)/envs/eNano_env2
+    cd $MUMU_DIR || die "Failed to access MUMU directory." 1
+    make CXX=$(conda info --base)/envs/eNano_env2/bin/x86_64-conda-linux-gnu-g++ || die "Failed to build MUMU." 1
+    make install DESTDIR=$(conda info --base)/envs/eNano_env2 || die "Failed to install MUMU." 1
+
+    cd $TMP_DIR
     # Move the eNano script to the Conda environment's bin directory
     chmod +x eNano
     mv eNano "$(conda info --root)/envs/eNano_env2/bin/"
@@ -228,7 +240,7 @@ eNano() {
                 CHIM_REF="$2"
                 shift 2
                 ;;
-            --skip--concat)
+            --skip-concat)
                 SKIP_CONCAT="$2"
                 # If --skip-concat is set to 1, fastqgz flag is not required
                 if [ "$SKIP_CONCAT" -eq 1 ]; then
