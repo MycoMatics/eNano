@@ -1,74 +1,13 @@
-name: eNano_env
 channels:
   - conda-forge
   - bioconda
   - defaults
 dependencies:
-  - _libgcc_mutex=0.1=conda_forge
-  - _openmp_mutex=4.5=2_gnu
-  - binutils_impl_linux-64=2.40=ha1999f0_3
-  - bzip2=1.0.8=hd590300_5
-  - ca-certificates=2024.6.2=hbcca054_0
-  - cffi=1.16.0=py312hf06ca03_0
-  - chopper=0.8.0=hdcf5f25_0
-  - clang=18.1.7=default_h90ac42e_0
-  - clang-18=18.1.7=default_h9bb3924_0
-  - cutadapt=4.8=py312hf67a6ed_1
-  - dnaio=1.2.0=py312hf67a6ed_2
-  - icu=73.2=h59595ed_0
-  - isa-l=2.31.0=hd590300_1
-  - kernel-headers_linux-64=2.6.32=he073ed8_17
-  - ld_impl_linux-64=2.40=hf3520f5_3
-  - libclang-cpp18.1=18.1.7=default_h9bb3924_0
-  - libexpat=2.6.2=h59595ed_0
-  - libffi=3.4.2=h7f98852_5
-  - libgcc-devel_linux-64=13.2.0=hdb50d1a_108
-  - libgcc-ng=13.2.0=h77fa898_8
-  - libgomp=13.2.0=h77fa898_8
-  - libiconv=1.17=hd590300_2
-  - libllvm18=18.1.7=hb77312f_0
-  - libnsl=2.0.1=hd590300_0
-  - libsqlite=3.46.0=hde9e2c9_0
-  - libstdcxx-ng=13.2.0=hc0a3c3a_8
-  - libuuid=2.38.1=h0b41bf4_0
-  - libxcrypt=4.4.36=hd590300_1
-  - libxml2=2.12.7=hc051c1a_1
-  - libzlib=1.2.13=h4ab18f5_6
-  - ncurses=6.5=h59595ed_0
-  - openssl=3.3.1=h4ab18f5_0
-  - pbzip2=1.1.13=h1fcc475_2
-  - pigz=2.8=h2797004_0
-  - pip=24.0=pyhd8ed1ab_0
-  - porechop=0.2.4=py312h28adbb1_7
-  - pycparser=2.22=pyhd8ed1ab_0
-  - python=3.12.3=hab00c5b_0_cpython
-  - python-isal=1.6.1=py312h98912ed_0
-  - python-zlib-ng=0.4.3=py312hb55346b_0
-  - python_abi=3.12=4_cp312
-  - readline=8.2=h8228510_1
-  - setuptools=70.0.0=pyhd8ed1ab_0
-  - sysroot_linux-64=2.12=he073ed8_17
-  - tk=8.6.13=noxft_h4845f30_101
-  - tzdata=2024a=h0c530f3_0
-  - vsearch=2.28.1=h6a68c12_0
-  - wheel=0.43.0=pyhd8ed1ab_1
-  - xopen=2.0.1=py312h7900ff3_0
-  - xz=5.2.6=h166bdaf_0
-  - zlib=1.2.13=h4ab18f5_6
-  - zlib-ng=2.0.7=h0b41bf4_0
-  - zstandard=0.19.0=py312h5eee18b_0
-  - zstd=1.5.6=ha6fb4c9_0
+  - chopper>=0.9
+  - cutadapt>=2.8
+  - porechop=0.2.4
+  - vsearch>=2.21
   - make>=4.0
-  - gcc_linux-64>=10 
-  - gxx_linux-64>=10
-  - clang=>=17
-  - awk
+  - clang>=17
   - git
   - cmake
-  - postBuild: |
-      #!/bin/bash
-      # Clone and build MUMU
-      git clone https://github.com/frederic-mahe/mumu.git
-      cd mumu
-      make
-      make install
