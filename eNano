@@ -41,7 +41,7 @@ install_conda() {
 
     # Install MUMU within the Conda environment - first maek sure the correct compilers are used
     MUMU_DIR=$(conda info --base)/envs/eNano_env3/mumu
-    cp -r mumu $(conda info --base)/envs/eNano_env3
+    git clone https://github.com/frederic-mahe/mumu.git $MUMU_DIR || die "Failed to clone MUMU repository." 1
     cd $MUMU_DIR || die "Failed to access MUMU directory." 1
     make CXX=$(conda info --base)/envs/eNano_env3/bin/x86_64-conda-linux-gnu-g++ || die "Failed to build MUMU." 1
     make install prefix=$(conda info --base)/envs/eNano_env3 || die "Failed to install MUMU." 1
