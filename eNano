@@ -519,109 +519,79 @@ fi
         echo "Skipping Step 4 - LULU otu-table curation"
     fi
     
-    # Step 5: Species-table creation in R
+    # Step 5: Species-table creation in Python
     if [ "$SKIP_SP" -eq 0 ]; then
-        check_command "Rscript"
         echo "starting Step 5 - Species-table creation"
-        #run SH_table in R, produce Species-table
-        Rscript -e '
-        args <- commandArgs(trailingOnly = TRUE)
-        output_path <- args[1]
-        otu_table <- args[2]
-        lulu_table <- args[3]
-        output_name <- basename(output_path)
-        
-        # Check if "stringr" and "dplyr" are installed
+        # Run SH-table in Python, produce Species-table
+        python3 - <<END
+import pandas as pd
+import re
+import os
 
-        if (!require("dplyr")) {
-          # If "dplyr" is not installed, install it
-          install.packages("dplyr")
-        }
-         if (!require("stringr")) {
-          # If "stringr" is not installed, install it
-          install.packages("stringr")
-        }
-        library(dplyr)
-        library(stringr)
-                
-        # Set the working directory
-        setwd(output_path)
-        #create SH-function to aggregate at species level using SINTAX column
-        SH_table <- function(otu_df){
-          barcode_cols <- names(otu_df)[grepl("^barcode", names(otu_df))]
-          otucol <- names(otu_df)[grepl("OTU", names(otu_df))]
-          sintaxcol <- names(otu_df)[grepl("^SINTAX", names(otu_df))]
-          # Extract taxonomic information and confidences for each level
-          tmp_df <- otu_df %>%
-            select(otucol, barcode_cols, sintaxcol) %>%
-            mutate(
-              domain = ifelse(str_detect(SINTAX, "d:"), str_extract(SINTAX, "d:[^,]+"), NA),
-              domain_confidence = ifelse(is.na(domain), NA, as.numeric(str_extract(domain, "(?<=\\()\\d+\\.\\d+(?=\\))"))),
-              domain = ifelse(is.na(domain), NA, str_replace(domain, "\\(.*\\)", "")), # Remove confidence scores and parentheses
-              domain = ifelse(is.na(domain), NA, str_remove(domain, "d:")),  
-              
-              phylum = ifelse(str_detect(SINTAX, "p:"), str_extract(SINTAX, "p:[^,]+"), NA),
-              phylum_confidence = ifelse(is.na(phylum), NA, as.numeric(str_extract(phylum, "(?<=\\()\\d+\\.\\d+(?=\\))"))),
-              phylum = ifelse(is.na(phylum), NA, str_replace(phylum, "\\(.*\\)", "")), # Remove confidence scores and parentheses
-              phylum = ifelse(is.na(phylum), NA, str_remove(phylum, "p:")),  
-              
-              class = ifelse(str_detect(SINTAX, "c:"), str_extract(SINTAX, "c:[^,]+"), NA),
-              class_confidence = ifelse(is.na(class), NA, as.numeric(str_extract(class, "(?<=\\()\\d+\\.\\d+(?=\\))"))),
-              class = ifelse(is.na(class), NA, str_replace(class, "\\(.*\\)", "")), # Remove confidence scores and parentheses
-              class = ifelse(is.na(class), NA, str_remove(class, "c:")),
-              
-              order = ifelse(str_detect(SINTAX, "o:"), str_extract(SINTAX, "o:[^,]+"), NA),
-              order_confidence = ifelse(is.na(order), NA, as.numeric(str_extract(order, "(?<=\\()\\d+\\.\\d+(?=\\))"))),
-              order = ifelse(is.na(order), NA, str_replace(order, "\\(.*\\)", "")),
-              order = ifelse(is.na(order), NA, str_remove(order, "o:")),
-              
-              family = ifelse(str_detect(SINTAX, "f:"), str_extract(SINTAX, "f:[^,]+"), NA),
-              family_confidence = ifelse(is.na(family), NA, as.numeric(str_extract(family, "(?<=\\()\\d+\\.\\d+(?=\\))"))),
-              family = ifelse(is.na(family), NA, str_replace(family, "\\(.*\\)", "")),
-              family = ifelse(is.na(family), NA, str_remove(family, "f:")),
-              
-              genus = ifelse(str_detect(SINTAX, "g:"), str_extract(SINTAX, "g:[^,]+"), NA),
-              genus_confidence = ifelse(is.na(genus), NA, as.numeric(str_extract(genus, "(?<=\\()\\d+\\.\\d+(?=\\))"))),
-              genus = ifelse(is.na(genus), NA, str_replace(genus, "\\(.*\\)", "")),
-              genus = ifelse(is.na(genus), NA, str_remove(genus, "g:")),
-              
-              species = ifelse(str_detect(SINTAX, "s:"), str_extract(SINTAX, "s:[^,]+"), NA),
-              species_confidence = ifelse(is.na(species), NA, as.numeric(str_extract(species, "(?<=\\()\\d+\\.\\d+(?=\\))"))),
-              species = ifelse(is.na(species), NA, str_replace(species, "\\(.*\\)", "")),
-              species = ifelse(is.na(species), NA, str_remove(species, "s:"))
-            )  %>% 
-            mutate(across(all_of(barcode_cols), as.numeric)) %>%
-            mutate(abundance = rowSums(across(all_of(barcode_cols)), na.rm = TRUE)) %>% 
-            mutate( Include = (abundance == 1 & species_confidence >= 0.95) | (abundance > 1 & species_confidence >= 0.80)) %>%
-            filter(Include) %>% 
-              select(-Include) %>% 
-            group_by(species) %>%
-            summarize(across(all_of(barcode_cols), sum, na.rm = TRUE)) %>%
-            ungroup()
-          return(tmp_df)
-        }
-        # Read the data files
-        otutab <- read.csv(otu_table, sep="\t", header=TRUE, as.is=TRUE, row.names = 1)
-        sh_otu_result <- SH_table(otutab)
-        write.table(sh_otu_result, file=paste0(output_name, "_OTU_SP.tsv"), quote = FALSE, sep = "\t", col.names = NA)
-        
-        # Check if LULU table exists and process it
-        if(file.exists(lulu_table)) {
-          lulutab <- tryCatch({
-              read.csv(lulu_table, sep="\t", header=TRUE, as.is=TRUE, row.names = 1)
-          }, error=function(e) stop("Failed to read LULU table: ", e))
-          sh_lulu_result <- SH_table(lulutab)
-          write.table(sh_lulu_result, file=paste0("LULU_SP.tsv"), quote = FALSE, sep = "\t", col.names = NA)
-        } else {
-          cat("LULU table does not exist. Skipping LULU data processing.\n")
-        }
-       ' \
-        ${OUTPUT_PATH} "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX.tsv" "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_LULU.tsv"
+output_path = "${OUTPUT_PATH}"
+otu_table = "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX.tsv"
+lulu_table = "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_LULU.tsv"
+
+# Check if LULU table exists, otherwise set to None
+lulu_exists = os.path.exists(lulu_table)
+lulu_table = lulu_table if lulu_exists else None
+
+# Extract the base name of the output directory
+base_name = os.path.basename(output_path)
+
+def parse_sintax_column(df, sintax_col):
+    taxon_patterns = {
+        'domain': r'd:([^,]+)',
+        'phylum': r'p:([^,]+)',
+        'class': r'c:([^,]+)',
+        'order': r'o:([^,]+)',
+        'family': r'f:([^,]+)',
+        'genus': r'g:([^,]+)',
+        'species': r's:([^,]+)'
+    }
+    
+    for rank, pattern in taxon_patterns.items():
+        df[rank] = df[sintax_col].apply(lambda x: re.search(pattern, x).group(1) if pd.notnull(x) and re.search(pattern, x) else None)
+        df[f'{rank}_confidence'] = df[rank].apply(lambda x: float(re.search(r'\((\d+\.\d+)\)', x).group(1)) if x and re.search(r'\((\d+\.\d+)\)', x) else None)
+        df[rank] = df[rank].apply(lambda x: re.sub(r'\(.*\)', '', x) if x else None)
+    
+    return df
+
+def aggregate_species(df, barcode_columns):
+    df['abundance'] = df[barcode_columns].sum(axis=1)
+    df['Include'] = ((df['abundance'] == 1) & (df['species_confidence'] >= 0.95)) | ((df['abundance'] > 1) & (df['species_confidence'] >= 0.80))
+    filtered_df = df[df['Include']].copy()
+    species_df = filtered_df.groupby('species')[barcode_columns].sum().reset_index()
+    return species_df
+
+def main(otu_table, otu_output_file, lulu_table=None, lulu_output_file=None):
+    otu_df = pd.read_csv(otu_table, sep='\t')
+    barcode_columns = [col for col in otu_df.columns if col.startswith('barcode')]
+    
+    # Process OTU table
+    parsed_otu_df = parse_sintax_column(otu_df, 'SINTAX')
+    species_otu_df = aggregate_species(parsed_otu_df, barcode_columns)
+    species_otu_df.to_csv(otu_output_file, sep='\t', index=False)
+
+    # Process LULU table if it exists
+    if lulu_table and lulu_output_file:
+        lulu_df = pd.read_csv(lulu_table, sep='\t')
+        parsed_lulu_df = parse_sintax_column(lulu_df, 'SINTAX')
+        species_lulu_df = aggregate_species(parsed_lulu_df, barcode_columns)
+        species_lulu_df.to_csv(lulu_output_file, sep='\t', index=False)
+
+# Determine output file names using base_name and output_path
+otu_output_file = f"{output_path}/{base_name}_OTU_SP.tsv"
+lulu_output_file = f"{output_path}/{base_name}_LULU_SP.tsv" if lulu_exists else None
+
+# Run the main function
+main(otu_table, otu_output_file, lulu_table, lulu_output_file)
+END
     else
         echo "Skipping Step 5 - Species-table creation"
+    fi
     # End of pipeline
     echo "################# pipeline done #################"
-    fi
 }
 
 # Call the eNano function with the provided arguments
