@@ -30,22 +30,18 @@ The pipeline consists of four consecutive steps:
    - Join OTU table with taxonomy table  
    - Vsearch creates a match_list which can be used in LULU for curating OTU table  
 
-4. **lulu curation of OTU table**: This step uses output from step 3 to curate the OTU table by implementing the lulu algorithm. The results are outputted in the main folder. The steps include:  
-   !!This step is skipped by default as several errors easily pop-up depending on the system and R install  
-   !!The script as is should be able to run on WSL2  
-   !!If errors can not be resolved, Check out the [LULU repository](https://github.com/tobiasgf/lulu) and run seperately in R using match_list from step 3.  
-   - Run R from  terminal 
-      + Get output directory, load otu-table and match list  
-      + Load lulu and dplyr (and install if required via devtools)  
-      + Run lulu and output curated table  
-      + Write the number of curated OTUs to log file  
-   - Join curated otu-table with taxonomy table
-     
-5) **aggregation at species-level** uses OTU table from steps 3 and 4 to aggregate OTUs at species-level - outputted in the main folder.
-    - runs R from terminal
-      + get output directory, load otu-table and match list  
-        + load stringr and dplyr 
-        + load and run SH_table function to agrgegate OTUs at Species level
+4. **lulu curation of OTU table**: This step uses output from step 3 to curate the OTU table running the lulu algorithm as implemented in mumu. The results are outputted in the main folder. The steps include:  
+   - runs mumu using otu-table and match list
+   - join curated otu-table with taxonomy table  
+              
+5) **aggregation at species-level** uses OTU table from step 3 and if present LULU table from step 4 to aggregate OTUs at species-level - outputted in the main folder.
+    - runs python
+        + takes OTU_TAX table and if present OTU_LULU table
+        + filters on sintax confindence and abundance
+          ° singletons need 0.95 confidence for retention
+          ° multitons need 0.80 confidence for retention
+      + aggregate species-level names of retained OTUs  
+
 ### Workflow  
 <img src="./enano_workflow.png" width="720" height="1400" alt="eNano workflow" title="eNano workflow">  
 
@@ -92,24 +88,22 @@ eNano: Pipeline that generates an OTU table and associated taxonomy from demulti
                - vsearch chimera filtering with uchime_denovo or uchime_ref
                - vsearch retrieve taxonomy with sintax from database fasta file  
                - vsearch creates a match_list which can be used in LULU for curating OTU table  
-            4) takes match_list from step 3 to perform lulu curation of OTU table - outputted in the main folder  
-               - runs R from terminal  
-                 + get output directory, load otu-table and match list  
-                 + load lulu and dplyr (and install if required via devtools)  
-                 + run lulu and output curated table  
-                 + write the number of curated OTUs to log file  
-               - join curated otu-table with taxonomy table
-            5) uses OTU table from steps 3 and 4 to aggregate OTUs at species-level - outputted in the main folder.
-               - runs R from terminal
-                 + get output directory, load otu-table and match list  
-                 + load stringr and dplyr 
-                 + load and run SH_table function to agrgegate OTUs at SH level
+            4) uses match_list from step 3 to perform lulu curation of OTU table - outputted in the main folder.
+               - runs mumu using otu-table and match list
+               - join curated otu-table with taxonomy table  
+            5) uses OTU table from 3 and/or LULU-curated table from step 4 to construct a table aggregated at the species-level - outputted in the main folder.
+               - runs python
+                 + takes OTU_TAX table and if present OTU_LULU table
+                 + filters on sintax confindence and abundance
+                     ° singletons need 0.95 confidence for retention
+                     ° multitons need 0.80 confidence for retention
+                 + aggregate species-level names of retained OTUs
 
 Usage: ./eNano [[--help] (--fastqgz dir --output dir --threads value)  
                              (--fwp string --rvp string --minlength value --maxlength value)  
-                             (--ee value --q value --clusterid value --db file --chimref [arg])  
-                             (--skip-concat [arg] --skip-process [arg] --skip-otu [arg])
-                             (--skip-lulu [arg] --skip-sh [arg])" 
+                             (--ee value --q value --maxqual value --clusterid value --db file --chimref [arg])  
+                             (--mintax value--skip-concat [arg] --skip-process [arg] --skip-otu [arg])
+                             (--skip-lulu [arg] --skip-sp [arg])" 
 Options:  
   -h, --help           Display this help message  
   --fastqgz PATH       Path to the directory with fastq.gz files (required, unless --skip-concat 1)  
@@ -120,10 +114,12 @@ Options:
   --minlength NUM      Minimum length of reads to keep in cutadapt(default: 400)  
   --maxlength NUM      Maximum length of reads to keep in cutadapt(default: 1200)  
   --ee NUM             Expected error rate for cutadapt (default: 0.2)  
-  --q NUM              Quality threshold for NanoFilt (default: 20)  
-  --clusterid NUM      OTU clustering identity threshold in vsearch (default: 0.97)  
+  --q NUM              Quality threshold for chopper (default: 20)
+  --maxqual NUM        Maximum Quality threshold for chopper (default: 1000)
+  --clusterid NUM      OTU clustering identity threshold in vsearch (default: 0.98)
+  --mintax NUM         cut-off for SINTAX confidence in taxonomy splitting
   --db FASTAFILE       Path to the reference FASTA file for taxonomy assignment in vsearch (required, unless --skip-otu 1)  
-  --chimref            Reference-based (using --db) chimera filtering if set to 1 (default: 0)"  
+  --chimref            Reference-based (using --db) chimera filtering if set to 1 (default: 0, de novo)"  
   --skip-concat        Skip the concatenation step if set to 1 (default: 0)  
   --skip-process       Skip the processing step if set to 1 (default: 0)  
   --skip-otu           Skip the OTU clustering and taxonomy assignment step if set to 1 (default: 0)  
