@@ -115,19 +115,17 @@ usage() {
                - vsearch sorts OTUs by size
                - vsearch retrieve taxonomy with sintax from database fasta file
                - join otu-table with taxonomy
-               - vsearch creates a match_list which can be used in LULU for curating OTU table
+               - vsearch creates a match_list which can be used in mumu for curating OTU table
             4) uses match_list from step 3 to perform lulu curation of OTU table - outputted in the main folder.
-               - runs R from terminal
-                 + get output directory, load otu-table and match list  
-                 + load lulu and dplyr (and install if required via devtools)  
-                 + run lulu and output curated table  
-                 + write the number of curated OTUs to log file  
+               - runs mumu using otu-table and match list
                - join curated otu-table with taxonomy table  
-            5) uses OTU table from 3 and/or LULU-curated table from step 4 to construct a 'Species-Hypothesis' table - outputted in the main folder.
-               - runs R from terminal
-                 + get output directory, load otu-table and match list  
-                 + load stringr and dplyr 
-                 + load and run function to agrgegate OTUs at Species level
+            5) uses OTU table from 3 and/or LULU-curated table from step 4 to construct a table aggregated at the species-level - outputted in the main folder.
+               - runs python
+                 + takes OTU_TAX table and if present OTU_LULU table
+                 + filters on sintax confindence and abundance
+                     ° singletons need 0.95 confidence for retention
+                     ° multitons need 0.80 confidence for retention
+                 + aggregate species-level names of retained OTUs
     "
     echo ""
     echo "Usage: $0 [[--help] (--fastqgz dir --output dir --threads value)
@@ -473,13 +471,13 @@ fi
         echo "Skipping Step 3 - OTU clustering, chimera filtering, and taxonomy assignment"
     fi
 
-    # Step 4: LULU otu-table curation, produce match-list and run LULU in R from script
+    # Step 4: LULU otu-table curation, produce match-list and run mumu
     if [ "$SKIP_LULU" -eq 0 ]; then
         check_command "mumu"
-        echo "Starting Step 4 - MUMU curation"
+        echo "Starting Step 4 - LULU curation using mumu"
 
         # Run MUMU with specified input and output files
-        mumu --otu_table "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv" --match_list "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_LULU_match_list.txt" --log "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_lulu_curated_log.txt" --new_otu_table "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_LULU.tsv"
+        mumu --otu_table "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv" --match_list "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_LULU_match_list.txt" --log "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_lulu_log.txt" --new_otu_table "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_LULU.tsv"
 
         #combine curated table with taxonomy table, remove string ';size=X'from the taxonomy file, sort both TAX and OTU files
         sed 's/;size=[0-9]\+//' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" > "${OUTPUT_PATH}/temp7.tsv"
@@ -516,7 +514,7 @@ fi
         rm "$OUTPUT_PATH"/*temp*
         
     else
-        echo "Skipping Step 4 - LULU otu-table curation"
+        echo "Skipping Step 4 - LULU otu-table curation as implemented in mumu"
     fi
     
     # Step 5: Species-table creation in Python
