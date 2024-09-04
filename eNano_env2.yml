@@ -11,3 +11,4 @@ dependencies:
   - clang>=17
   - git
   - cmake
+  - pandas
