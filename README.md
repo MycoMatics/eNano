@@ -30,13 +30,9 @@ The pipeline consists of four consecutive steps:
    - Join OTU table with taxonomy table  
    - Vsearch creates a match_list which can be used in LULU for curating OTU table  
 
-4. **lulu curation of OTU table**: This step uses output from step 3 to curate the OTU table running the lulu algorithm as implemented in mumu. The results are outputted in the main folder. The steps include:  
-   - runs mumu using otu-table and match list
-   - join curated otu-table with taxonomy table  
-              
-5) **aggregation at species-level** uses OTU table from step 3 and if present LULU table from step 4 to aggregate OTUs at species-level - outputted in the main folder.
+4) **aggregation at species-level** uses OTU table from step 3 to aggregate OTUs at species-level - outputted in the main folder.
     - runs python
-        + takes OTU_TAX table and if present OTU_LULU table
+        + takes OTU_TAX table
         + filters on sintax confindence and abundance
           ° singletons need 0.95 confidence for retention
           ° multitons need 0.80 confidence for retention
@@ -93,10 +89,7 @@ eNano: Pipeline that generates an OTU table and associated taxonomy from demulti
                - vsearch chimera filtering with uchime_denovo or uchime_ref
                - vsearch retrieve taxonomy with sintax from database fasta file  
                - vsearch creates a match_list which can be used in LULU for curating OTU table  
-            4) uses match_list from step 3 to perform lulu curation of OTU table - outputted in the main folder.
-               - runs mumu using otu-table and match list
-               - join curated otu-table with taxonomy table  
-            5) uses OTU table from 3 and/or LULU-curated table from step 4 to construct a table aggregated at the species-level - outputted in the main folder.
+            4) uses OTU table from 3 to construct a table aggregated at the species-level - outputted in the main folder.
                - runs python
                  + takes OTU_TAX table and if present OTU_LULU table
                  + filters on sintax confindence and abundance
@@ -108,7 +101,7 @@ Usage: ./eNano [[--help] (--fastqgz dir --output dir --threads value)
                              (--fwp string --rvp string --minlength value --maxlength value)  
                              (--ee value --q value --maxqual value --clusterid value --db file --chimref [arg])  
                              (--mintax value--skip-concat [arg] --skip-process [arg] --skip-otu [arg])
-                             (--skip-lulu [arg] --skip-sp [arg]) 
+                             (--skip-sp [arg]) 
 Options:  
   -h, --help           Display this help message  
   --fastqgz PATH       Path to the directory with fastq.gz files (required, unless --skip-concat 1)  
@@ -128,7 +121,6 @@ Options:
   --skip-concat        Skip the concatenation step if set to 1 (default: 0)  
   --skip-process       Skip the processing step if set to 1 (default: 0)  
   --skip-otu           Skip the OTU clustering and taxonomy assignment step if set to 1 (default: 0)  
-  --skip-lulu          Performs the LULU otu curation step if set to 0 (default: 1)
   --skip-sp            Aggregates otus at the Species-level step if set to 0 (default: 1)
   --install-conda      Installs eNano and adds it to /envs/eNano_env/bin/ 
 ```
@@ -144,7 +136,7 @@ gunzip path/to/test_data/unite_sintax.fasta.gz
 ```
 Run test data it with the following command (should take  <10 minutes):  
 ```shell
- eNano --fastqgz path/to/test_data/fastq_test --output testrun_eNano --threads 8 --db path/to/test_data/unite_sintax.fasta --skip-lulu 0 --skip-sp 0
+ eNano --fastqgz path/to/test_data/fastq_test --output testrun_eNano --threads 8 --db path/to/test_data/unite_sintax.fasta --skip-sp 0
 ```  
 (more threads can be set, but multiple (sub)steps can only use 1 thread - no great improvements in run time should be expected for this small dataset)  
   
@@ -168,21 +160,12 @@ The output should all be contained in a folder `testrun_eNano` in the working di
   file contains  information that can be passed to the LULU algorithm for post-clustering curation of the OTU table. Check out the [LULU repository](https://github.com/tobiasgf/lulu) and the [MUMU repository](https://github.com/frederic-mahe/mumu) for more information. 
 - `testrun_eNano_OTU_TAX.tsv`
   file contains the ***main output*** and is the same OTU table as `testrun_eNano_otutable.tsv`, but has the taxonomic ids from `testrun_eNano_sintaxonomy.tsv` appended.
-  
-The following files will also be outputted if Step 4 - lulu-curation is enabled (--skip-lulu 0) 
-- `testrun_eNano_OTU_LULU.tsv`
-  file contains the lulu-curated OTU-table.
-- `testrun_eNano_OTU_TAX_LULU.tsv`
-  file contains the same OTU table as `testrun_eNano_OTU_LULU.tsv`, but has taxonomic ids from `testrun_eNano_sintaxonomy.tsv` appended.  
-- `testrun_eNano_lulu_log.txt`
-  logfile from lulu-curation.
 
-The following files will also be outputted if Step 5 - species aggregation is enabled (--skip-sp 0) 
+The following files will also be outputted if Step 4 - species aggregation is enabled (--skip-sp 0) 
 - `testrun_eNano_OTU_SP.tsv`
   file aggregates the OTU-level abundances in `testrun_eNano_OTU_TAX.tsv` to species-level abundances using 0.95 SINTAX confidence for singleton OTUs and 0.8 SINTAX confidence for multiton OTUs.
-- `testrun_eNano_LULU_SP.tsv`
-  file aggregates the OTU-level abundances in `testrun_eNano_OTU_TAX_LULU.tsv` to species-level abundances using 0.95 SINTAX confidence for singleton OTUs and 0.8 SINTAX confidence for multiton OTUs. 
-  
+
+
 `clusterlog.txt` should display this info:  
 [...]  
 950503 nt in 1481 seqs, min 472, max 751, avg 642
