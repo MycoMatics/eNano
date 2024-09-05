@@ -138,15 +138,21 @@ Options:
 ---
 ## Test data
 Test data can be found under `fastq_test`. This is part of the data generated for our paper [REF].  
-To generate an OTU-table and taxonomic assignment (if not include --skip-otu 1), download a reference database that works with the vsearch --sintax flag (e.g., the UNITE db for fungi - USEARCH/UTAX release [here](https://unite.ut.ee/repository.php)). Version 9.0 (2023-07-18) for fungi can be found in this repository as `unite_sintax.fasta`.  
+To generate an OTU-table and taxonomic assignment (if not include --skip-otu 1), download a reference database that works with the vsearch --sintax flag (e.g., the UNITE db for fungi - USEARCH/UTAX release [here](https://unite.ut.ee/repository.php)).
+Version 10 for fungi can be found in this repository as `unite_sintax.fasta`. This file has the species-level names switched out for the SH code. If using this file, unzip first using
+```shell
+gunzip path/to/test_data/unite_sintax.fasta.gz
+
 ..
 Run test data it with the following command (should take  <10 minutes):  
-```$ eNano --fastqgz /path/to/fastq_test --output testrun_eNano --threads 8 --db unite_sintax.fasta```  
-(more threads can be set, but many (sub)steps can only use 1 thread - no great improvements in running time should be expected)  
+```shell
+ eNano --fastqgz path/to/test_data/fastq_test --output testrun_eNano --threads 8 --db path/to/test_data/unite_sintax.fasta --chimref 1 --skip-lulu 0 --skip-sp 0
+```  
+(more threads can be set, but multiple (sub)steps can only use 1 thread - no great improvements in run time should be expected for this small dataset)  
   
 **expected output**
 The output should all be contained in a folder `testrun_eNano` in the working directory:  
-- concatenated_barcodes  
+- concatenated_barcodes
 - processed_fasta  
 - barcodes.fasta  
 - centroids.fasta  
@@ -156,28 +162,31 @@ The output should all be contained in a folder `testrun_eNano` in the working di
 - testrun_eNano_LULU_match_list.txt  
 - testrun_eNano_OTU_TAX.tsv  
   
-The following files will also be outputted if Step 4 - lulu-curation is enabled (--skip-lulu 0) and runs without errors  
+The following files will also be outputted if Step 4 - lulu-curation is enabled (--skip-lulu 0) 
 - testrun_eNano_OTU_LULU.tsv  
 - testrun_eNano_OTU_TAX_LULU.tsv  
-- testrun_eNano_lulu_curated_log.txt  
-- lulu.log_$date_$time  
+- testrun_eNano_lulu_log.txt  
 
+The following files will also be outputted if Step 5 - species aggregation is enabled (--skip-sp 0) 
+- testrun_eNano_OTU_SP.tsv  
+- testrun_eNano_LULU_SP.tsv  
 
 The `concatenated_barcodes` folder contains a single fastq file per barcode  
-The `processed_fasta` folder contains a fasta file per processed barcode - each `barcodeXX.fastq` file was passed to porechop -> cutadapt -> NanoFilt -> vsearch.  
+The `processed_fasta` folder contains a fasta file per processed barcode - each `barcodeXX.fastq` file was passed to porechop -> cutadapt -> chopper -> vsearch.  
 The `barcodes.fasta` file holds all the processed_fasta fasta files (with barcode information contained in the sequence headers)  
-The `centroids.fasta` file holds the chimera-filtered OTUs, clustered at (default) 97% identity. The `clusterlog.txt` is the logfile from the clustering process.  
+The `centroids.fasta` file holds the chimera-filtered OTUs, clustered at (default) 98% identity. The `clusterlog.txt` is the logfile from the clustering process.  
 The `testrun_eNano_otutable.tsv` file contains the tab-delimited raw OTU table  
 The `testrun_eNano_sintaxonomy.tsv` file contains the tab-delimited taxonomic assignment per OTU  
-The `testrun_eNano_LULU_match_list.txt` file contains  information that can be passed to the LULU algorithm for post-clustering curation of the OTU table. Check out the [LULU repository](https://github.com/tobiasgf/lulu) for more information.  
+The `testrun_eNano_LULU_match_list.txt` file contains  information that can be passed to the LULU algorithm for post-clustering curation of the OTU table. Check out the [LULU repository](https://github.com/tobiasgf/lulu) and the [MUMU repository](https://github.com/frederic-mahe/mumu) for more information.  
 The ***`testrun_eNano_OTU_TAX.tsv`*** file contains the ***main output*** and is the same OTU table as `testrun_eNano_otutable.tsv`, but has the taxonomic ids from `testrun_eNano_sintaxonomy.tsv` appended.  
   
-The `testrun_eNano_OTU_LULU.tsv` file contains the lulu-curated OTU-table  
+The `testrun_eNano_OTU_LULU.tsv` file contains the lulu-curated OTU-table.
 The `testrun_eNano_OTU_TAX_LULU.tsv` file contains the same OTU table as `testrun_eNano_OTU_LULU.tsv`, but has taxonomic ids from `testrun_eNano_sintaxonomy.tsv` appended.  
-The `testrun_eNano_lulu_curated_log.txt` is a log file that specifies the amount of otus retained and discarded after lulu-curation  
-The `lulu.log_$date_$time` file is the default lulu log file
-  
-  
+The `testrun_eNano_lulu_log.txt` is the default log file from lulu-curation.
+
+The `testrun_eNano_OTU_SP.tsv` file aggregates the OTU-level abundances in `testrun_eNano_OTU_TAX.tsv` to species-level abundances using 0.95 SINTAX confidence for singleton OTUs and 0.8 SINTAX confidence for multiton OTUs.
+The `testrun_eNano_LULU_SP.tsv` file aggregates the OTU-level abundances in `testrun_eNano_OTU_TAX_LULU.tsv` to species-level abundances using 0.95 SINTAX confidence for singleton OTUs and 0.8 SINTAX confidence for multiton OTUs.
+ 
   
 `clusterlog.txt` should display this info:  
 [...]  
