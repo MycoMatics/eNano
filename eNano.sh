@@ -52,7 +52,9 @@ install_conda() {
     mv eNano.sh "$(conda info --root)/envs/eNano_env/bin/eNano"
     chmod +x "$(conda info --root)/envs/eNano_env/bin/eNano"
     
-    echo "eNano has been installed in the 'eNano_env' Conda environment. You can now use 'eNano' command to run the pipeline."
+    echo "eNano has been installed in the 'eNano_env' Conda environment."
+    echo "activate the environment with: conda activate eNano_env."
+    echo "You can now use 'eNano' command to run the pipeline."
 }
 # Check if the --install-conda flag is provided
 if [ "$1" = "--install-conda" ]; then
