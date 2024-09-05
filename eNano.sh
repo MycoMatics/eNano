@@ -36,16 +36,7 @@ install_conda() {
     eval "$(conda shell.bash hook)"
     conda activate eNano_env || die "Failed to activate Conda environment." 1
     
-    #adjustments for MUMU
-    conda install -n eNano_env -y gcc_linux-64>=10 gxx_linux-64>=10 || die "Failed to install GCC 11 in Conda environment." 1
-
-    # Install MUMU within the Conda environment - first maek sure the correct compilers are used
-    MUMU_DIR=$(conda info --base)/envs/eNano_env/mumu
-    git clone https://github.com/frederic-mahe/mumu.git $MUMU_DIR || die "Failed to clone MUMU repository." 1
-    cd $MUMU_DIR || die "Failed to access MUMU directory." 1
-    make CXX=$(conda info --base)/envs/eNano_env/bin/x86_64-conda-linux-gnu-g++ || die "Failed to build MUMU." 1
-    make install prefix=$(conda info --base)/envs/eNano_env || die "Failed to install MUMU." 1
-    check_command "mumu"
+    echo "on MacOS (BSD-based) LULU curation is not yet possible using mumu"
     cd $TMP_DIR
     # Move the eNano script to the Conda environment's bin directory
     chmod +x eNano.sh
@@ -86,7 +77,6 @@ SINTAX_CUTOFF="0.8"
 SKIP_CONCAT=0
 SKIP_PROCESS=0
 SKIP_OTU=0
-SKIP_LULU=1
 CHIM_REF=0
 SKIP_SP=1
 
@@ -118,13 +108,10 @@ usage() {
                - vsearch sorts OTUs by size
                - vsearch retrieve taxonomy with sintax from database fasta file
                - join otu-table with taxonomy
-               - vsearch creates a match_list which can be used in mumu for curating OTU table
-            4) uses match_list from step 3 to perform lulu curation of OTU table - outputted in the main folder.
-               - runs mumu using otu-table and match list
-               - join curated otu-table with taxonomy table  
-            5) uses OTU table from 3 and/or LULU-curated table from step 4 to construct a table aggregated at the species-level - outputted in the main folder.
+               - vsearch creates a match_list which can be used in LULU or MUMU for curating OTU table
+            4) uses OTU table from 3 to construct a table aggregated at the species-level - outputted in the main folder.
                - runs python
-                 + takes OTU_TAX table and if present OTU_LULU table
+                 + takes OTU_TAX table
                  + filters on sintax confindence and abundance
                      ° singletons need 0.95 confidence for retention
                      ° multitons need 0.80 confidence for retention
@@ -135,7 +122,7 @@ usage() {
                              (--fwp string --rvp string --minlength value --maxlength value)
                              (--ee value --q value --maxqual value --clusterid value --db file)
                              (--mintax value --skip-concat [arg] --skip-process [arg] --skip-otu [arg])
-                             (--skip-lulu [arg] --skip-sp [arg])"
+                             ( --skip-sp [arg])"
     echo ""
     echo "Options:"
     echo "  -h, --help           Display this help message"
@@ -156,7 +143,6 @@ usage() {
     echo "  --skip-concat        Skip the concatenation step if set to 1 (default: $SKIP_CONCAT)"
     echo "  --skip-process       Skip the processing step if set to 1 (default: $SKIP_PROCESS)"
     echo "  --skip-otu           Skip the OTU clustering and taxonomy assignment step if set to 1 (default: $SKIP_OTU)"
-    echo "  --skip-lulu          Performs the LULU otu curation step if set to 0 (default: $SKIP_LULU)"
     echo "  --skip-sp            Aggregates otus at the species level step if set to 0 (default: $SKIP_SP)"
     echo "  --install-conda      Installs eNano and adds it to /envs/eNano_env/bin/"
     exit 1
@@ -261,10 +247,6 @@ eNano() {
                 fi
                 shift 2
                 ;;
-            --skip-lulu)
-                SKIP_LULU="$2"
-                shift 2
-                ;;
             --skip-sp)
                 SKIP_SP="$2"
                 shift 2
@@ -339,7 +321,6 @@ fi
     echo "  --skip-concat $SKIP_CONCAT"
     echo "  --skip-process $SKIP_PROCESS"
     echo "  --skip-otu $SKIP_OTU"
-    echo "  --skip-lulu $SKIP_LULU"
     echo "  --skip-sp $SKIP_SP"
 
     echo "#################################################### starting pipeline for Nanopore simplex data #######################################################"
@@ -474,55 +455,9 @@ fi
         echo "Skipping Step 3 - OTU clustering, chimera filtering, and taxonomy assignment"
     fi
 
-    # Step 4: LULU otu-table curation, produce match-list and run mumu
-    if [ "$SKIP_LULU" -eq 0 ]; then
-        check_command "mumu"
-        echo "Starting Step 4 - LULU curation using mumu"
-
-        # Run MUMU with specified input and output files
-        mumu --otu_table "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv" --match_list "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_LULU_match_list.txt" --log "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_lulu_log.txt" --new_otu_table "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_LULU.tsv"
-
-        #combine curated table with taxonomy table, remove string ';size=X'from the taxonomy file, sort both TAX and OTU files
-        sed 's/;size=[0-9]\+//' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" > "${OUTPUT_PATH}/temp7.tsv"
-        check_otu_ids "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_LULU.tsv" "LULU OTU table"
-        check_otu_ids "${OUTPUT_PATH}/temp7.tsv" "taxonomy file"
-        sort -k1,1 "${OUTPUT_PATH}/temp7.tsv" > "${OUTPUT_PATH}/temp8.tsv"
-        cut -f1,2,4 "${OUTPUT_PATH}/temp8.tsv" > "${OUTPUT_PATH}/temp8_cut.tsv"
-        sed -i '1i #OTU ID\tSINTAX\tTAX' "${OUTPUT_PATH}/temp8_cut.tsv"
-        sort -k1,1 "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_LULU.tsv" > "${OUTPUT_PATH}/temp9.tsv"
-        sed '1s/^[^\t]*/#OTU ID/' "${OUTPUT_PATH}/temp9.tsv" > "${OUTPUT_PATH}/temp10.tsv"
-        # Join sorted OTU and TAX files into combined OTU_TAX file
-        join -1 1 -2 1 -t $'\t' "${OUTPUT_PATH}/temp10.tsv" "${OUTPUT_PATH}/temp8_cut.tsv" > "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_LULU_temp.tsv"
-        
-        # Process the OTU_TAX file using awk
-        awk 'BEGIN{FS=OFS="\t"} 
-        NR==1 {
-            print $0, "domain", "phylum", "class", "order", "family", "genus", "species"
-            for(i=1; i<=NF; i++) {
-                if($i == "TAX") {
-                    tax_index = i
-                }
-            }
-        }
-        NR>1 {
-            split($tax_index,a,","); 
-            for(i in a) {
-                split(a[i],b,":"); tax[b[1]]=b[2]
-            }
-            $(NF+1)=tax["d"]; $(NF+1)=tax["p"]; $(NF+1)=tax["c"]; $(NF+1)=tax["o"]; $(NF+1)=tax["f"]; $(NF+1)=tax["g"]; $(NF+1)=tax["s"]; 
-            print; delete tax
-        }' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_LULU_temp.tsv" > "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_LULU.tsv"
-        
-        # Clean up temporary files
-        rm "$OUTPUT_PATH"/*temp*
-        
-    else
-        echo "Skipping Step 4 - LULU otu-table curation as implemented in mumu"
-    fi
-    
-    # Step 5: Species-table creation in Python
+    # Step 4: Species-table creation in Python
     if [ "$SKIP_SP" -eq 0 ]; then
-        echo "starting Step 5 - Species-table creation"
+        echo "starting Step 4 - Species-table creation"
         # Run SH-table in Python, produce Species-table
         python3 - <<END
 import pandas as pd
@@ -531,11 +466,7 @@ import os
 
 output_path = "${OUTPUT_PATH}"
 otu_table = "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX.tsv"
-lulu_table = "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_OTU_TAX_LULU.tsv"
 
-# Check if LULU table exists, otherwise set to None
-lulu_exists = os.path.exists(lulu_table)
-lulu_table = lulu_table if lulu_exists else None
 
 # Extract the base name of the output directory
 base_name = os.path.basename(output_path)
@@ -565,7 +496,7 @@ def aggregate_species(df, barcode_columns):
     species_df = filtered_df.groupby('species')[barcode_columns].sum().reset_index()
     return species_df
 
-def main(otu_table, otu_output_file, lulu_table=None, lulu_output_file=None):
+def main(otu_table, otu_output_file):
     otu_df = pd.read_csv(otu_table, sep='\t')
     barcode_columns = [col for col in otu_df.columns if col.startswith('barcode')]
     
@@ -574,19 +505,11 @@ def main(otu_table, otu_output_file, lulu_table=None, lulu_output_file=None):
     species_otu_df = aggregate_species(parsed_otu_df, barcode_columns)
     species_otu_df.to_csv(otu_output_file, sep='\t', index=False)
 
-    # Process LULU table if it exists
-    if lulu_table and lulu_output_file:
-        lulu_df = pd.read_csv(lulu_table, sep='\t')
-        parsed_lulu_df = parse_sintax_column(lulu_df, 'SINTAX')
-        species_lulu_df = aggregate_species(parsed_lulu_df, barcode_columns)
-        species_lulu_df.to_csv(lulu_output_file, sep='\t', index=False)
-
 # Determine output file names using base_name and output_path
 otu_output_file = f"{output_path}/{base_name}_OTU_SP.tsv"
-lulu_output_file = f"{output_path}/{base_name}_LULU_SP.tsv" if lulu_exists else None
 
 # Run the main function
-main(otu_table, otu_output_file, lulu_table, lulu_output_file)
+main(otu_table, otu_output_file)
 END
     else
         echo "Skipping Step 5 - Species-table creation"
