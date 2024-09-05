@@ -142,8 +142,7 @@ To generate an OTU-table and taxonomic assignment (if not include --skip-otu 1),
 Version 10 for fungi can be found in this repository as `unite_sintax.fasta`. This file has the species-level names switched out for the SH code. If using this file, unzip first using
 ```shell
 gunzip path/to/test_data/unite_sintax.fasta.gz
-
-..
+```
 Run test data it with the following command (should take  <10 minutes):  
 ```shell
  eNano --fastqgz path/to/test_data/fastq_test --output testrun_eNano --threads 8 --db path/to/test_data/unite_sintax.fasta --chimref 1 --skip-lulu 0 --skip-sp 0
