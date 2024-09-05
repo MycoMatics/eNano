@@ -19,39 +19,39 @@ check_command() {
     command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1" 1
 }
 
-# Check if Conda is installed and install eNano_env3 environment
+# Check if Conda is installed and install eNano_env environment
 install_conda() {
     # Check if Conda is installed
     check_command "conda"
     TMP_DIR=$(pwd)
-    # Check if the 'eNano_env3' environment already exists
-    if conda info --envs | grep -q "eNano_env3"; then
-        die "'eNano_env3' Conda environment already exists. Please remove it or choose a different environment name." 1
+    # Check if the 'eNano_env' environment already exists
+    if conda info --envs | grep -q "eNano_env"; then
+        die "'eNano_env' Conda environment already exists. Please remove it or choose a different environment name." 1
     fi
 
     # Create and update the Conda environment using the YAML file
-    conda env create -n eNano_env3 -f eNano_env3.yml || die "Failed to create or update Conda environment." 1
+    conda env create -n eNano_env -f eNano_env.yml || die "Failed to create or update Conda environment." 1
     
     # Activate the Conda environment using conda activate
     eval "$(conda shell.bash hook)"
-    conda activate eNano_env3 || die "Failed to activate Conda environment." 1
+    conda activate eNano_env || die "Failed to activate Conda environment." 1
     
     #adjustments for MUMU
-    conda install -n eNano_env3 gcc_linux-64>=10 gxx_linux-64>=10 || die "Failed to install GCC 11 in Conda environment." 1
+    conda install -n eNano_env gcc_linux-64>=10 gxx_linux-64>=10 || die "Failed to install GCC 11 in Conda environment." 1
 
     # Install MUMU within the Conda environment - first maek sure the correct compilers are used
-    MUMU_DIR=$(conda info --base)/envs/eNano_env3/mumu
+    MUMU_DIR=$(conda info --base)/envs/eNano_env/mumu
     git clone https://github.com/frederic-mahe/mumu.git $MUMU_DIR || die "Failed to clone MUMU repository." 1
     cd $MUMU_DIR || die "Failed to access MUMU directory." 1
-    make CXX=$(conda info --base)/envs/eNano_env3/bin/x86_64-conda-linux-gnu-g++ || die "Failed to build MUMU." 1
-    make install prefix=$(conda info --base)/envs/eNano_env3 || die "Failed to install MUMU." 1
+    make CXX=$(conda info --base)/envs/eNano_env/bin/x86_64-conda-linux-gnu-g++ || die "Failed to build MUMU." 1
+    make install prefix=$(conda info --base)/envs/eNano_env || die "Failed to install MUMU." 1
     check_command "mumu"
     cd $TMP_DIR
     # Move the eNano script to the Conda environment's bin directory
     chmod +x eNano
-    mv eNano.sh "$(conda info --root)/envs/eNano_env3/bin/eNano"
+    mv eNano.sh "$(conda info --root)/envs/eNano_env/bin/eNano"
     
-    echo "eNano has been installed in the 'eNano_env3' Conda environment. You can now use 'eNano' command to run the pipeline."
+    echo "eNano has been installed in the 'eNano_env' Conda environment. You can now use 'eNano' command to run the pipeline."
 }
 # Check if the --install-conda flag is provided
 if [ "$1" = "--install-conda" ]; then
@@ -93,7 +93,7 @@ REQUIRED_DB_FASTA="1"
 
 # Function to display usage information
 usage() {
-    echo "./eNano --install-conda       installs eNano in the eNano_env3 conda environment and adds it to /envs/eNano_env3/bin/ (only needed for initial install)"
+    echo "./eNano --install-conda       installs eNano in the eNano_env conda environment and adds it to /envs/eNano_env/bin/ (only needed for initial install)"
     echo ""
     echo "eNano: Pipeline that generates an OTU table and associated taxonomy from demultiplexed Nanopore data outputted by Minknow.
           The input usually is a 'fastq_pass' directory with barcode01 - barcode96 subdirectories, each containing fastq files that passed some user-defined quality threshold.
@@ -155,7 +155,7 @@ usage() {
     echo "  --skip-otu           Skip the OTU clustering and taxonomy assignment step if set to 1 (default: $SKIP_OTU)"
     echo "  --skip-lulu          Performs the LULU otu curation step if set to 0 (default: $SKIP_LULU)"
     echo "  --skip-sp            Aggregates otus at the species level step if set to 0 (default: $SKIP_SP)"
-    echo "  --install-conda      Installs eNano and adds it to /envs/eNano_env3/bin/"
+    echo "  --install-conda      Installs eNano and adds it to /envs/eNano_env/bin/"
     exit 1
 }
 
