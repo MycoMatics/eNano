@@ -152,7 +152,7 @@ usage() {
     echo "  --mintax NUM         Min certainty for sintax cutoff (default: $SINTAX_CUTOFF)"
     echo "  --clusterid NUM      OTU clustering identity threshold in vsearch (default: $CLUSTER_PERCENT)"
     echo "  --db FASTAFILE       Path to the reference FASTA file for taxonomy assignment in vsearch (required, unless --skip-otu 1)"
-    echo "  --chimref            Reference-based (using --db) chimera filtering if set to 1 (default: $CHIM_REF)"
+    echo "  --chimref            De novo chimera filtering if set to 1 (default: $CHIM_REF Reference-based using --db)"
     echo "  --skip-concat        Skip the concatenation step if set to 1 (default: $SKIP_CONCAT)"
     echo "  --skip-process       Skip the processing step if set to 1 (default: $SKIP_PROCESS)"
     echo "  --skip-otu           Skip the OTU clustering and taxonomy assignment step if set to 1 (default: $SKIP_OTU)"
@@ -302,8 +302,8 @@ eNano() {
             die "Invalid OTU clustering identity threshold: $CLUSTER_PERCENT. It must be a number." 1
         fi
 
-        if ! [[ "$CHIM_REF" =~ ^(0|1|2)$ ]]; then
-            die "Invalid chimref value: $Q_THRESHOLD. It must be an integer: 0 or 1 or 2." 1
+        if ! [[ "$CHIM_REF" =~ ^(0|1)$ ]]; then
+            die "Invalid chimref value: $CHIM_REF. It must be an integer: 0 or 1" 1
 
 fi
     }
@@ -415,7 +415,7 @@ fi
         # OTU clustering
         # Chimera filtering (compare reference-based and de novo!)
         echo "start chimera filtering"
-        if [ "$CHIM_REF" -eq 1 ]; then
+        if [ "$CHIM_REF" -eq 0 ]; then
             vsearch --uchime_ref "${OUTPUT_PATH}/barcodes.fasta" --db "$DB_FASTA" --nonchimeras "${OUTPUT_PATH}/temp1.fasta"
         else
             vsearch --uchime_denovo "${OUTPUT_PATH}/barcodes.fasta" --nonchimeras "${OUTPUT_PATH}/temp1.fasta"
