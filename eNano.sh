@@ -1,7 +1,8 @@
 #!/bin/bash
 # DESCRIPTION
 #    eNano script.
-#
+export PATH="$(conda info --base)/envs/eNano_env/bin:$PATH"
+
 # IMPLEMENTATION
 #    author   Glen Dierickx (glen.dierickx@ugent.be or glen.dierickx@inbo.be)
 #
@@ -35,7 +36,8 @@ install_conda() {
     # Activate the Conda environment using conda activate
     eval "$(conda shell.bash hook)"
     conda activate eNano_env || die "Failed to activate Conda environment." 1
-    
+    # Set GNU tools priority when using the conda environment
+    export PATH="$(conda info --base)/envs/eNano_env/bin:$PATH"
     echo "on MacOS (BSD-based) LULU curation is not yet possible using mumu"
     cd $TMP_DIR
     # Move the eNano script to the Conda environment's bin directory
