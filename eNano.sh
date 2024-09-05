@@ -131,7 +131,7 @@ usage() {
                  + aggregate species-level names of retained OTUs
     "
     echo ""
-    echo "Usage: $0 [[--help] (--fastqgz dir --output dir --threads value)
+    echo "Usage: $0 [--help] (--fastqgz dir --output dir --threads value)
                              (--fwp string --rvp string --minlength value --maxlength value)
                              (--ee value --q value --maxqual value --clusterid value --db file)
                              (--mintax value --skip-concat [arg] --skip-process [arg] --skip-otu [arg])
