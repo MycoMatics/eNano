@@ -108,7 +108,7 @@ Usage: ./eNano [[--help] (--fastqgz dir --output dir --threads value)
                              (--fwp string --rvp string --minlength value --maxlength value)  
                              (--ee value --q value --maxqual value --clusterid value --db file --chimref [arg])  
                              (--mintax value--skip-concat [arg] --skip-process [arg] --skip-otu [arg])
-                             (--skip-lulu [arg] --skip-sp [arg])" 
+                             (--skip-lulu [arg] --skip-sp [arg]) 
 Options:  
   -h, --help           Display this help message  
   --fastqgz PATH       Path to the directory with fastq.gz files (required, unless --skip-concat 1)  
@@ -130,7 +130,7 @@ Options:
   --skip-otu           Skip the OTU clustering and taxonomy assignment step if set to 1 (default: 0)  
   --skip-lulu          Performs the LULU otu curation step if set to 0 (default: 1)
   --skip-sp            Aggregates otus at the Species-level step if set to 0 (default: 1)
-  --install-conda      Installs eNano and adds it to /envs/eNano_env/bin/" 
+  --install-conda      Installs eNano and adds it to /envs/eNano_env/bin/ 
 ```
   
 
@@ -166,7 +166,7 @@ The output should all be contained in a folder `testrun_eNano` in the working di
   file contains the tab-delimited taxonomic assignment per OTU.  
 - `testrun_eNano_LULU_match_list.txt`
   file contains  information that can be passed to the LULU algorithm for post-clustering curation of the OTU table. Check out the [LULU repository](https://github.com/tobiasgf/lulu) and the [MUMU repository](https://github.com/frederic-mahe/mumu) for more information. 
-- `***testrun_eNano_OTU_TAX.tsv***`
+- `testrun_eNano_OTU_TAX.tsv`
   file contains the ***main output*** and is the same OTU table as `testrun_eNano_otutable.tsv`, but has the taxonomic ids from `testrun_eNano_sintaxonomy.tsv` appended.
   
 The following files will also be outputted if Step 4 - lulu-curation is enabled (--skip-lulu 0) 
@@ -202,5 +202,6 @@ The contents of `testrun_eNano_OTU_TAX.tsv` should resemble:
 | OTU_13  | 1         | 0         | 0         | d:Fungi(1.00),p:Basidiomycota(1.00)... | d:Fungi,p:Basidiomycota,c:Agaricomycetes,o:Auriculariales | Fungi   | Basidiomycota | Agaricomycetes  | Auriculariales |               |               |               |
 ...    
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""  
+..
 In barcode01 and barcode02, Kretzschmaria deusta is the top hit - a very common wood decay fungus in Beech. Indeed these barcodes correspond to samples taken from Beech dead wood.  
 If sorted for abundance, Malassezia species are also top hits for this run, they are ubiquitous lab (human skin) yeasts.  
