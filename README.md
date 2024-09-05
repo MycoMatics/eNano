@@ -148,7 +148,7 @@ Run test data it with the following command (should take  <10 minutes):
 ```  
 (more threads can be set, but multiple (sub)steps can only use 1 thread - no great improvements in run time should be expected for this small dataset)  
   
-**expected output**
+**expected output** (see test_data/default_testrun_eNano.tar.gz)
 The output should all be contained in a folder `testrun_eNano` in the working directory:  
 - `concatenated_barcodes`
   folder contains a single fastq file per barcode.  
