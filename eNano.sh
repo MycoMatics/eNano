@@ -30,14 +30,14 @@ install_conda() {
     fi
 
     # Create and update the Conda environment using the YAML file
-    conda env create -n eNano_env -f eNano_env.yml || die "Failed to create or update Conda environment." 1
+    conda env create -n eNano_env -f eNano_env.yml -y || die "Failed to create or update Conda environment." 1
     
     # Activate the Conda environment using conda activate
     eval "$(conda shell.bash hook)"
     conda activate eNano_env || die "Failed to activate Conda environment." 1
     
     #adjustments for MUMU
-    conda install -n eNano_env gcc_linux-64>=10 gxx_linux-64>=10 || die "Failed to install GCC 11 in Conda environment." 1
+    conda install -n eNano_env -y gcc_linux-64>=10 gxx_linux-64>=10 || die "Failed to install GCC 11 in Conda environment." 1
 
     # Install MUMU within the Conda environment - first maek sure the correct compilers are used
     MUMU_DIR=$(conda info --base)/envs/eNano_env/mumu
