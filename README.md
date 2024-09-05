@@ -152,60 +152,56 @@ Run test data it with the following command (should take  <10 minutes):
 **expected output**
 The output should all be contained in a folder `testrun_eNano` in the working directory:  
 - concatenated_barcodes
-- processed_fasta  
-- barcodes.fasta  
-- centroids.fasta  
-- clusterlog.txt  
-- testrun_eNano_otutable.tsv  
-- testrun_eNano_sintaxonomy.tsv  
-- testrun_eNano_LULU_match_list.txt  
-- testrun_eNano_OTU_TAX.tsv  
+  folder contains a single fastq file per barcode.  
+- processed_fasta
+  folder contains a fasta file per processed barcode - each `barcodeXX.fastq` file was passed to porechop -> cutadapt -> chopper -> vsearch.
+- barcodes.fasta
+  file holds all the processed_fasta fasta files (with barcode information contained in the sequence headers)  
+- centroids.fasta
+  file holds the chimera-filtered OTUs, clustered at (default) 98% identity.
+- clusterlog.txt
+  logfile from the clustering process.
+- testrun_eNano_otutable.tsv
+  file contains the tab-delimited raw OTU table.
+- testrun_eNano_sintaxonomy.tsv
+  file contains the tab-delimited taxonomic assignment per OTU.  
+- testrun_eNano_LULU_match_list.txt
+  file contains  information that can be passed to the LULU algorithm for post-clustering curation of the OTU table. Check out the [LULU repository](https://github.com/tobiasgf/lulu) and the [MUMU repository](https://github.com/frederic-mahe/mumu) for more information. 
+- ***testrun_eNano_OTU_TAX.tsv*** 
+  file contains the ***main output*** and is the same OTU table as `testrun_eNano_otutable.tsv`, but has the taxonomic ids from `testrun_eNano_sintaxonomy.tsv` appended.
   
 The following files will also be outputted if Step 4 - lulu-curation is enabled (--skip-lulu 0) 
-- testrun_eNano_OTU_LULU.tsv  
-- testrun_eNano_OTU_TAX_LULU.tsv  
-- testrun_eNano_lulu_log.txt  
+- testrun_eNano_OTU_LULU.tsv
+  file contains the lulu-curated OTU-table.
+- testrun_eNano_OTU_TAX_LULU.tsv
+  file contains the same OTU table as `testrun_eNano_OTU_LULU.tsv`, but has taxonomic ids from `testrun_eNano_sintaxonomy.tsv` appended.  
+- testrun_eNano_lulu_log.txt
+  logfile from lulu-curation.
 
 The following files will also be outputted if Step 5 - species aggregation is enabled (--skip-sp 0) 
-- testrun_eNano_OTU_SP.tsv  
-- testrun_eNano_LULU_SP.tsv  
-
-The `concatenated_barcodes` folder contains a single fastq file per barcode  
-The `processed_fasta` folder contains a fasta file per processed barcode - each `barcodeXX.fastq` file was passed to porechop -> cutadapt -> chopper -> vsearch.  
-The `barcodes.fasta` file holds all the processed_fasta fasta files (with barcode information contained in the sequence headers)  
-The `centroids.fasta` file holds the chimera-filtered OTUs, clustered at (default) 98% identity. The `clusterlog.txt` is the logfile from the clustering process.  
-The `testrun_eNano_otutable.tsv` file contains the tab-delimited raw OTU table  
-The `testrun_eNano_sintaxonomy.tsv` file contains the tab-delimited taxonomic assignment per OTU  
-The `testrun_eNano_LULU_match_list.txt` file contains  information that can be passed to the LULU algorithm for post-clustering curation of the OTU table. Check out the [LULU repository](https://github.com/tobiasgf/lulu) and the [MUMU repository](https://github.com/frederic-mahe/mumu) for more information.  
-The ***`testrun_eNano_OTU_TAX.tsv`*** file contains the ***main output*** and is the same OTU table as `testrun_eNano_otutable.tsv`, but has the taxonomic ids from `testrun_eNano_sintaxonomy.tsv` appended.  
-  
-The `testrun_eNano_OTU_LULU.tsv` file contains the lulu-curated OTU-table.
-The `testrun_eNano_OTU_TAX_LULU.tsv` file contains the same OTU table as `testrun_eNano_OTU_LULU.tsv`, but has taxonomic ids from `testrun_eNano_sintaxonomy.tsv` appended.  
-The `testrun_eNano_lulu_log.txt` is the default log file from lulu-curation.
-
-The `testrun_eNano_OTU_SP.tsv` file aggregates the OTU-level abundances in `testrun_eNano_OTU_TAX.tsv` to species-level abundances using 0.95 SINTAX confidence for singleton OTUs and 0.8 SINTAX confidence for multiton OTUs.
-The `testrun_eNano_LULU_SP.tsv` file aggregates the OTU-level abundances in `testrun_eNano_OTU_TAX_LULU.tsv` to species-level abundances using 0.95 SINTAX confidence for singleton OTUs and 0.8 SINTAX confidence for multiton OTUs.
- 
+- testrun_eNano_OTU_SP.tsv
+  file aggregates the OTU-level abundances in `testrun_eNano_OTU_TAX.tsv` to species-level abundances using 0.95 SINTAX confidence for singleton OTUs and 0.8 SINTAX confidence for multiton OTUs.
+- testrun_eNano_LULU_SP.tsv
+  file aggregates the OTU-level abundances in `testrun_eNano_OTU_TAX_LULU.tsv` to species-level abundances using 0.95 SINTAX confidence for singleton OTUs and 0.8 SINTAX confidence for multiton OTUs. 
   
 `clusterlog.txt` should display this info:  
 [...]  
-4698547 nt in 7292 seqs, min 426, max 875, avg 644  
+950503 nt in 1481 seqs, min 472, max 751, avg 642
 [...]  
-Clusters: 88 Size min 1, max 6912, avg 82.9  
-Singletons: 64, 0.9% of seqs, 72.7% of clusters  
+Clusters: 13 Size min 1, max 1465, avg 113.9
+Singletons: 11, 0.7% of seqs, 84.6% of clusters
   
   
 The contents of `testrun_eNano_OTU_TAX.tsv` should resemble:  
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""  
-| #OTU ID | barcode01 | barcode02 | barcode30 | SINTAX 					| TAX  						| domain | phylum | class | order | family | genus | species |  
-|---------|-----------|-----------|-----------|-------------------------|---------------------------|--------|--------|-------|-------|--------|-------|---------|  
-| OTU_1   | 2531      | 4381      | 0         | d:Fungi(1.00),p:Asco... | d:Fungi,p:Asco...,c:Sor...| Fungi | Ascomycota | Sordariomycetes | Xylariales | Xylariaceae | Kretzschmaria | Kretzschmaria_deusta |  
-| OTU_10  | 1         | 0         | 0         | d:Fungi(1.00),p:Asco... | d:Fungi,p:Asco...,c:Sor...| Fungi | Ascomycota | Sordariomycetes | Xylariales | Xylariaceae | Kretzschmaria | Kretzschmaria_deusta |  
-| OTU_11  | 1         | 0         | 0         | d:Fungi(1.00),p:Asco... | d:Fungi,p:Asco...,c:Leo...| Fungi | Ascomycota | Leotiomycetes | Helotiales |   |   |   |  
-| OTU_12  | 1         | 0         | 0         | d:Fungi(1.00),p:Asco... | d:Fungi,p:Asco...,c:Sor...| Fungi | Ascomycota | Sordariomycetes | Xylariales | Xylariaceae | Kretzschmaria | Kretzschmaria_deusta |  
-...  
-  
-  
+| #OTU ID | barcode01 | barcode02 | barcode30 | SINTAX | TAX | domain | phylum | class | order | family | genus | species |
+|---------|-----------|-----------|-----------|--------|-----|--------|--------|-------|-------|--------|-------|---------|
+| OTU_1   | 555       | 910       | 0         | d:Fungi(1.00),p:Ascomycota(1.00)... | d:Fungi,p:Ascomycota,c:Sordariomycetes,o:Xylariales,f:Xylariaceae,g:Kretzschmaria | Fungi   | Ascomycota | Sordariomycetes | Xylariales  | Xylariaceae | Kretzschmaria |         |
+| OTU_10  | 1         | 0         | 0         | d:Fungi(1.00),p:Ascomycota(0.99)... | d:Fungi,p:Ascomycota,c:Saccharomycetes,o:Saccharomycetales,f:Debaryomycetaceae | Fungi   | Ascomycota | Saccharomycetes | Saccharomycetales | Debaryomycetaceae |               |
+| OTU_11  | 1         | 0         | 0         | d:Fungi(1.00),p:Basidiomycota(1.00)... | d:Fungi,p:Basidiomycota,c:Tremellomycetes,o:Filobasidiales,f:Piskurozymaceae,g:Solicoccozyma,s:SH0953900.10FU | Fungi   | Basidiomycota | Tremellomycetes | Filobasidiales | Piskurozymaceae | Solicoccozyma | SH0953900.10FU |
+| OTU_12  | 1         | 0         | 0         | d:Fungi(1.00),p:Ascomycota(0.99)... | d:Fungi,p:Ascomycota,c:Leotiomycetes,o:Helotiales,f:Leptodontidiaceae,g:Leptodontidium | Fungi   | Ascomycota | Leotiomycetes  | Helotiales    | Leptodontidiaceae | Leptodontidium |               |
+| OTU_13  | 1         | 0         | 0         | d:Fungi(1.00),p:Basidiomycota(1.00)... | d:Fungi,p:Basidiomycota,c:Agaricomycetes,o:Auriculariales | Fungi   | Basidiomycota | Agaricomycetes  | Auriculariales |               |               |               |
+...    
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""  
 In barcode01 and barcode02, Kretzschmaria deusta is the top hit - a very common wood decay fungus in Beech. Indeed these barcodes correspond to samples taken from Beech dead wood.  
-If sorted for abundance, Malassezia species are also top hits for this run, they are ubiquitous lab contaminants.  
+If sorted for abundance, Malassezia species are also top hits for this run, they are ubiquitous lab (human skin) yeasts.  
