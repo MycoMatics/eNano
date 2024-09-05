@@ -53,16 +53,22 @@ Clone the github repo
 git clone https://github.com/MycoMatics/eNano.git
 ```  
 
-```$ cd /path/to/eNano_directory```  
-```$ chmod +x eNano.sh```  
-```$ ./eNano.sh --install-conda ```  
+```shell
+cd /path/to/eNano_directory
+chmod +x eNano.sh
+./eNano.sh --install-conda
+```  
 
 To activate the conda environment, run:  
-```$ source activate```  
-```$ conda activate eNano_env```  
+```shell
+source activate 
+conda activate eNano_env
+```  
 
 To run eNano and display usage, run:  
-```$ eNano --help```  
+```shell
+eNano --help
+```  
 Or  
 ```bash
 $ eNano -h  
@@ -119,13 +125,13 @@ Options:
   --clusterid NUM      OTU clustering identity threshold in vsearch (default: 0.98)
   --mintax NUM         cut-off for SINTAX confidence in taxonomy splitting
   --db FASTAFILE       Path to the reference FASTA file for taxonomy assignment in vsearch (required, unless --skip-otu 1)  
-  --chimref            Reference-based (using --db) chimera filtering if set to 1 (default: 0, de novo)"  
+  --chimref            Reference-based (using --db) chimera filtering if set to 1 (default: 0, de novo)
   --skip-concat        Skip the concatenation step if set to 1 (default: 0)  
   --skip-process       Skip the processing step if set to 1 (default: 0)  
   --skip-otu           Skip the OTU clustering and taxonomy assignment step if set to 1 (default: 0)  
   --skip-lulu          Performs the LULU otu curation step if set to 0 (default: 1)
   --skip-sp            Aggregates otus at the Species-level step if set to 0 (default: 1)
-  --install-conda      Installs eNano and adds it to /envs/eNano_env/bin/  
+  --install-conda      Installs eNano and adds it to /envs/eNano_env/bin/" 
 ```
   
 
