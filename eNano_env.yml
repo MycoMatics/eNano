@@ -8,3 +8,9 @@ dependencies:
   - porechop=0.2.4
   - vsearch>=2.21
   - pandas
+  - coreutils
+  - gnu-sed
+  - gawk
+  - grep
+  - findutils
+  - gzip
