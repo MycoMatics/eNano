@@ -7,8 +7,4 @@ dependencies:
   - cutadapt>=2.8
   - porechop=0.2.4
   - vsearch>=2.21
-  - make>=4.0
-  - clang>=17
-  - git
-  - cmake
   - pandas
