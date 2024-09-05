@@ -203,6 +203,5 @@ The contents of `testrun_eNano_OTU_TAX.tsv` should resemble:
 ...
 
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""  
-..
 In barcode01 and barcode02, Kretzschmaria deusta is the top hit - a very common wood decay fungus in Beech. Indeed these barcodes correspond to samples taken from Beech dead wood.  
 If sorted for abundance, Malassezia species are also top hits for this run, they are ubiquitous lab (human skin) yeasts.  
