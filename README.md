@@ -200,7 +200,8 @@ The contents of `testrun_eNano_OTU_TAX.tsv` should resemble:
 | OTU_11  | 1         | 0         | 0         | d:Fungi(1.00),p:Basidiomycota(1.00)... | d:Fungi,p:Basidiomycota,c:Tremellomycetes,o:Filobasidiales,f:Piskurozymaceae,g:Solicoccozyma,s:SH0953900.10FU | Fungi   | Basidiomycota | Tremellomycetes | Filobasidiales | Piskurozymaceae | Solicoccozyma | SH0953900.10FU |
 | OTU_12  | 1         | 0         | 0         | d:Fungi(1.00),p:Ascomycota(0.99)... | d:Fungi,p:Ascomycota,c:Leotiomycetes,o:Helotiales,f:Leptodontidiaceae,g:Leptodontidium | Fungi   | Ascomycota | Leotiomycetes  | Helotiales    | Leptodontidiaceae | Leptodontidium |               |
 | OTU_13  | 1         | 0         | 0         | d:Fungi(1.00),p:Basidiomycota(1.00)... | d:Fungi,p:Basidiomycota,c:Agaricomycetes,o:Auriculariales | Fungi   | Basidiomycota | Agaricomycetes  | Auriculariales |               |               |               |
-...    
+...
+
 """"""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""""  
 ..
 In barcode01 and barcode02, Kretzschmaria deusta is the top hit - a very common wood decay fungus in Beech. Indeed these barcodes correspond to samples taken from Beech dead wood.  
