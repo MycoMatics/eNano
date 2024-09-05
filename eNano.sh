@@ -174,7 +174,7 @@ eNano() {
                 usage
                 ;;
             --fastqgz)
-                FASTQGZ_PATH=$(realpath "$2")
+                FASTQGZ_PATH=$(greadlink -f "$2")
                 shift 2
                 ;;
             --output)
