@@ -48,8 +48,9 @@ install_conda() {
     check_command "mumu"
     cd $TMP_DIR
     # Move the eNano script to the Conda environment's bin directory
-    chmod +x eNano
+    chmod +x eNano.sh
     mv eNano.sh "$(conda info --root)/envs/eNano_env/bin/eNano"
+    chmod +x "$(conda info --root)/envs/eNano_env/bin/eNano"
     
     echo "eNano has been installed in the 'eNano_env' Conda environment. You can now use 'eNano' command to run the pipeline."
 }
