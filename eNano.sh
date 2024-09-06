@@ -374,7 +374,7 @@ fi
             cutadapt -g "${FWP}...${RVP}" --action=trim -e "$EE" --discard-untrimmed -m "$MIN_LENGTH" -M "$MAX_LENGTH" --times 2 "${BARCODE_PATH}/temp2.fastq" > "${BARCODE_PATH}/temp3.fastq"
             cat "${BARCODE_PATH}/temp3.fastq" | chopper --quality "$Q_THRESHOLD" --maxqual "$Q_MAX" -t "$THREADS" > "${BARCODE_PATH}/temp4.fastq"
             vsearch --fastq_filter "${BARCODE_PATH}/temp4.fastq" --fastaout "${BARCODE_PATH}/temp5.fasta" --fastq_ascii 33 --fastq_qmax 93
-            sed -i.bak -e "s|^>|>${FILE_NAME}_|" -e "s/;/__/g; s/ //g" "${BARCODE_PATH}/temp5.fasta"
+            gsed -i.bak -e "s|^>|>${FILE_NAME}_|" -e "s/;/__/g; s/ //g" "${BARCODE_PATH}/temp5.fasta"
             vsearch --fastx_filter "$BARCODE_PATH/temp5.fasta" --sample "${FILE_NAME}" --fastaout "${OUTPUT_PATH}/processed_fasta/${FILE_NAME}.fasta"
             rm "$BARCODE_PATH"/*.bak "$BARCODE_PATH"/temp*.fastq "$BARCODE_PATH"/temp*.fasta
 
@@ -392,7 +392,7 @@ fi
 
         # Temporary fix for vsearch v2.21.1 - add another semicolon after the sample name
         echo "adding semicolon to sample ID"
-        sed -i.bak "s/;sample=bc[0-9][0-9]/&;/" "${OUTPUT_PATH}/barcodes.fasta"
+        gsed -i.bak "s/;sample=bc[0-9][0-9]/&;/" "${OUTPUT_PATH}/barcodes.fasta"
         rm "$OUTPUT_PATH"/*.bak
 
         # OTU clustering
@@ -415,12 +415,12 @@ fi
         vsearch --db "$DB_FASTA" --sintax "${OUTPUT_PATH}/centroids.fasta" --tabbedout "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" --sintax_cutoff "$SINTAX_CUTOFF"
 
         # combine taxonomy and otu-table - remove string ';size=X' from the taxonomy file, sort both TAX and OTU files
-        sed 's/;size=[0-9]\+//' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" > "${OUTPUT_PATH}/temp3.tsv"
+        gsed 's/;size=[0-9]\+//' "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" > "${OUTPUT_PATH}/temp3.tsv"
         check_otu_ids "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv" "OTU table"
         check_otu_ids "${OUTPUT_PATH}/temp3.tsv" "taxonomy file"
         sort -k1,1 "${OUTPUT_PATH}/temp3.tsv" > "${OUTPUT_PATH}/temp4.tsv"
         cut -f1,2,4 "${OUTPUT_PATH}/temp4.tsv" > "${OUTPUT_PATH}/temp4_cut.tsv"
-        sed -i '1i #OTU ID\tSINTAX\tTAX' "${OUTPUT_PATH}/temp4_cut.tsv"
+        gsed -i '1i #OTU ID\tSINTAX\tTAX' "${OUTPUT_PATH}/temp4_cut.tsv"
         sort -k1,1 "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv" > "${OUTPUT_PATH}/temp5.tsv"
         
         # Join sorted OTU and TAX files into combined OTU_TAX file
@@ -447,7 +447,7 @@ fi
         
         # LULU clean-up - Produce a match-list with vsearch, remove string ';size=X' from match file for processing in LULU
          echo "producing LULU match list"
-         sed "s/;size=[0-9]\+//" "${OUTPUT_PATH}/centroids.fasta" > "${OUTPUT_PATH}/temp6.fasta"
+         gsed "s/;size=[0-9]\+//" "${OUTPUT_PATH}/centroids.fasta" > "${OUTPUT_PATH}/temp6.fasta"
          vsearch --usearch_global "${OUTPUT_PATH}/temp6.fasta"  --db "${OUTPUT_PATH}/temp6.fasta"  --self --id .84 --iddef 1 --userout "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_LULU_match_list.txt" -userfields query+target+id --maxaccepts 0 --query_cov .9 --maxhits 10
         
         # Remove temporary files
