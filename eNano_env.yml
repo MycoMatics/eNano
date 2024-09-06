@@ -9,7 +9,6 @@ dependencies:
   - vsearch>=2.21
   - pandas
   - coreutils
-  - gnu-sed
   - gawk
   - grep
   - findutils
