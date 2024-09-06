@@ -2,7 +2,11 @@
 # DESCRIPTION
 #    eNano script.
 export PATH="$(conda info --base)/envs/eNano_env/bin:$PATH"
-
+# Check if the current shell is not bash, and if so, re-run the script with bash
+if [ -z "$BASH_VERSION" ]; then
+    echo "Switching to bash..."
+    exec bash "$0" "$@"
+fi
 # IMPLEMENTATION
 #    author   Glen Dierickx (glen.dierickx@ugent.be or glen.dierickx@inbo.be)
 #
