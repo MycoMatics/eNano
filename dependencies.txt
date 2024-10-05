@@ -1,6 +1,0 @@
-Porechop v0.2.4 # older versions may work - Porechop is deprecated, this is the latest version
-Cutadapt >=v2.8 # version 2.8 introduced the --rc flag
-NanoFilt v2.8.0 # older versions may work - Nanofilt is deprecated, this is the latest version
-VSEARCH v2.21.0 # version 2.21 introduced the --sample flag
-R 4.1.2 # uses Rscript function from the utils package (v2.12)
-  dplyr 1.1.2 # used within R
