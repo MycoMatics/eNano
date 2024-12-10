@@ -1,0 +1,10 @@
+# if installing in a location without permissions pointing to a temporary location often does the trick
+export APPTAINER_TMPDIR=/tmp
+mkdir -p $APPTAINER_TMPDIR
+chmod 777 /tmp
+
+# build the container
+apptainer build eNano.sif eNano_definition
+
+# run using conatiner with desired flags
+apptainer run eNano.sif --help
