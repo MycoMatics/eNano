@@ -1,13 +1,16 @@
 
 <img src="./eNano_logo.PNG" width="400" height="200" alt="eNano logo" title="eNano logo">
 
-A simple workflow for eDNA runs on basecalled, demultiplexed Nanopore data as outputted by MinKnow.  
+A simple, containerized workflow for eDNA runs on basecalled, demultiplexed Nanopore data as outputted by MinKnow.  
 ---
+This pipeline was published as part of [What Quality Suffices for Nanopore Metabarcoding? Reconsidering Methodology and Ectomycorrhizae in Decaying Fagus sylvatica Bark as Case Study](https://doi.org/10.3390/jof10100708)
 
 ## Introduction
 eNano is a pipeline that generates an OTU (Operational Taxonomic Unit) table and associated taxonomy from demultiplexed Nanopore data outputted by Minknow.  
-The input is usually a 'fastq_pass' directory with barcode01 - barcode96 subdirectories, each containing fastq files that passed some user-defined quality threshold.  
-The pipeline consists of four consecutive steps:  
+The input is usually a 'fastq_pass' directory with barcode01 - barcode96 subdirectories, each containing fastq files that passed some user-defined quality threshold.
+This branch of the pipeline runs in a containerized environment for ease of use (using Apptainer/Singularity)
+
+The pipeline consists of five consecutive steps:  
 
 1. **Concatenation**: Concatenate fastq.gz files in each barcode subdirectory into a single fastq. The results are outputted in `concatenated_barcodes`.  
 
@@ -34,7 +37,7 @@ The pipeline consists of four consecutive steps:
    - runs mumu using otu-table and match list
    - join curated otu-table with taxonomy table  
               
-5) **aggregation at species-level** uses OTU table from step 3 and if present LULU table from step 4 to aggregate OTUs at species-level - outputted in the main folder.
+5. **aggregation at species-level** uses OTU table from step 3 and if present LULU table from step 4 to aggregate OTUs at species-level - outputted in the main folder.
     - runs python
         + takes OTU_TAX table and if present OTU_LULU table
         + filters on sintax confindence and abundance
@@ -48,31 +51,26 @@ The pipeline consists of four consecutive steps:
 ---
 ## Installation  
 
-Clone the github repo
+Having Apptainer (previously Singularity) is a **prerequisite** for running this branch of eNano!
+
+Download the definition file [eNano_definition](./build/eNano_definition)
+Run the build command pointing to the eNano_definition location
 ```shell
-git clone https://github.com/MycoMatics/eNano.git
+apptainer build eNano.sif eNano_definition
+```
+In the working directory, a new file eNano.sif should be present
+It is good practice to move this file (the container) from the install to a new, more long-term location.
+```shell
+mv eNano.sif /path/to/long_term_location/eNano.sif
+```  
+run using conatiner with desired flags as described in the documentation
+```shell
+apptainer run eNano.sif --help
 ```  
 
-```shell
-cd /path/to/eNano
-chmod +x eNano.sh
-./eNano.sh --install-conda
-```  
-
-To activate the conda environment, run:  
-```shell
-conda activate eNano_env
-```  
-
-To run eNano and display usage, run:  
-```shell
-eNano --help
-```  
-Or  
 ```bash
-$ eNano -h  
+$ eNano --help 
   
-./eNano --install-conda       installs eNano in the eNano_env conda environment and adds it to /envs/eNano_env/bin/ (only needed for initial install)  
 eNano: Pipeline that generates an OTU table and associated taxonomy from demultiplexed Nanopore data outputted by Minknow.  
           The input usually is a 'fastq_pass' directory with barcode01 - barcode96 subdirectories, each containing fastq files that passed some user-defined quality threshold.  
           3 steps are performed, each of which can be skipped.  
@@ -104,7 +102,7 @@ eNano: Pipeline that generates an OTU table and associated taxonomy from demulti
                      ° multitons need 0.80 confidence for retention
                  + aggregate species-level names of retained OTUs
 
-Usage: ./eNano [[--help] (--fastqgz dir --output dir --threads value)  
+Usage: apptainer run eNano.sif [[--help] (--fastqgz dir --output dir --threads value)  
                              (--fwp string --rvp string --minlength value --maxlength value)  
                              (--ee value --q value --maxqual value --clusterid value --db file --chimref [arg])  
                              (--mintax value--skip-concat [arg] --skip-process [arg] --skip-otu [arg])
@@ -130,7 +128,6 @@ Options:
   --skip-otu           Skip the OTU clustering and taxonomy assignment step if set to 1 (default: 0)  
   --skip-lulu          Performs the LULU otu curation step if set to 0 (default: 1)
   --skip-sp            Aggregates otus at the Species-level step if set to 0 (default: 1)
-  --install-conda      Installs eNano and adds it to /envs/eNano_env/bin/ 
 ```
   
 
@@ -144,7 +141,7 @@ gunzip path/to/test_data/unite_sintax.fasta.gz
 ```
 Run test data it with the following command (should take  <10 minutes):  
 ```shell
- eNano --fastqgz path/to/test_data/fastq_test --output testrun_eNano --threads 8 --db path/to/test_data/unite_sintax.fasta --skip-lulu 0 --skip-sp 0
+ apptainer run eNano.sif --fastqgz path/to/test_data/fastq_test --output testrun_eNano --threads 8 --db path/to/test_data/unite_sintax.fasta --skip-lulu 0 --skip-sp 0
 ```  
 (more threads can be set, but multiple (sub)steps can only use 1 thread - no great improvements in run time should be expected for this small dataset)  
   
