@@ -8,6 +8,7 @@ This pipeline was published as part of [What Quality Suffices for Nanopore Metab
 ## Introduction
 eNano is a pipeline that generates an OTU (Operational Taxonomic Unit) table and associated taxonomy from demultiplexed Nanopore data outputted by Minknow.  
 The input is usually a 'fastq_pass' directory with barcode01 - barcode96 subdirectories, each containing fastq files that passed some user-defined quality threshold.
+
 This branch of the pipeline runs in a containerized environment for ease of use (using Apptainer/Singularity)
 
 The pipeline consists of five consecutive steps:  
@@ -58,6 +59,8 @@ Run the build command pointing to the eNano_definition location
 ```shell
 apptainer build eNano.sif eNano_definition
 ```
+For troubles with priveliges see a potential solution at [workaround](./build/build_permission_workaround.txt)
+
 In the working directory, a new file eNano.sif should be present
 It is good practice to move this file (the container) from the install to a new, more long-term location.
 ```shell
