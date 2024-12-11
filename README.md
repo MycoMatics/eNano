@@ -3,7 +3,7 @@
 
 A simple workflow for eDNA runs on basecalled, demultiplexed Nanopore data as outputted by MinKnow.  
 ---
-
+**!! For a dockerized version using Apptainer/Singulariy, see the [Apptainer branch](https://github.com/MycoMatics/eNano/tree/Apptainer)!!**
 ## Introduction
 eNano is a pipeline that generates an OTU (Operational Taxonomic Unit) table and associated taxonomy from demultiplexed Nanopore data outputted by Minknow.  
 The input is usually a 'fastq_pass' directory with barcode01 - barcode96 subdirectories, each containing fastq files that passed some user-defined quality threshold.  
