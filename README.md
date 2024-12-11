@@ -76,7 +76,7 @@ $ eNano --help
   
 eNano: Pipeline that generates an OTU table and associated taxonomy from demultiplexed Nanopore data outputted by Minknow.  
           The input usually is a 'fastq_pass' directory with barcode01 - barcode96 subdirectories, each containing fastq files that passed some user-defined quality threshold.  
-          3 steps are performed, each of which can be skipped.  
+          5 steps are performed, each of which can be skipped - if the neccesary files are in the specified --output folder.  
             1) concatenate fastq.gz files in each barcode subdirectory into a single fastq - outputted in concatenated_barcodes.  
             2) processing each barcode fastq file - outputted in processed_fasta.  
                - porechop trim  
