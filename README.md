@@ -47,7 +47,7 @@ The pipeline consists of five consecutive steps:
       + aggregate species-level names of retained OTUs  
 
 ### Workflow  
-<img src="./enano_workflow.png" width="720" height="1400" alt="eNano workflow" title="eNano workflow">  
+<img src="./enano workflow_apptainer.drawio.png" width="720" height="1400" alt="eNano apptainer workflow" title="eNano apptainer workflow">  
 
 ---
 ## Installation  
