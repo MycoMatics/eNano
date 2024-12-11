@@ -19,49 +19,6 @@ check_command() {
     command -v "$1" >/dev/null 2>&1 || die "Required command not found: $1" 1
 }
 
-# Check if Conda is installed and install eNano_env environment
-install_conda() {
-    # Check if Conda is installed
-    check_command "conda"
-    TMP_DIR=$(pwd)
-    # Check if the 'eNano_env' environment already exists
-    if conda info --envs | grep -q "eNano_env"; then
-        die "'eNano_env' Conda environment already exists. Please remove it or choose a different environment name." 1
-    fi
-
-    # Create and update the Conda environment using the YAML file
-    conda env create -n eNano_env -f eNano_env.yml -y || die "Failed to create or update Conda environment." 1
-    
-    # Activate the Conda environment using conda activate
-    eval "$(conda shell.bash hook)"
-    conda activate eNano_env || die "Failed to activate Conda environment." 1
-    
-    #adjustments for MUMU
-    conda install -n eNano_env -y gcc_linux-64>=10 gxx_linux-64>=10 || die "Failed to install GCC 11 in Conda environment." 1
-
-    # Install MUMU within the Conda environment - first maek sure the correct compilers are used
-    MUMU_DIR=$(conda info --base)/envs/eNano_env/mumu
-    git clone https://github.com/frederic-mahe/mumu.git $MUMU_DIR || die "Failed to clone MUMU repository." 1
-    cd $MUMU_DIR || die "Failed to access MUMU directory." 1
-    make CXX=$(conda info --base)/envs/eNano_env/bin/x86_64-conda-linux-gnu-g++ || die "Failed to build MUMU." 1
-    make install prefix=$(conda info --base)/envs/eNano_env || die "Failed to install MUMU." 1
-    check_command "mumu"
-    cd $TMP_DIR
-    # Move the eNano script to the Conda environment's bin directory
-    chmod +x eNano.sh
-    mv eNano.sh "$(conda info --root)/envs/eNano_env/bin/eNano"
-    chmod +x "$(conda info --root)/envs/eNano_env/bin/eNano"
-    
-    echo "eNano has been installed in the 'eNano_env' Conda environment."
-    echo "activate the environment with: conda activate eNano_env."
-    echo "You can now use 'eNano' command to run the pipeline."
-}
-# Check if the --install-conda flag is provided
-if [ "$1" = "--install-conda" ]; then
-    install_conda
-    exit 0
-fi
-
 # Function to check the first column for OTU IDs
 check_otu_ids() {
     if ! awk -F '\t' '{print $1}' "$1" | grep -q 'OTU_[0-9]\+'; then
@@ -96,8 +53,6 @@ REQUIRED_DB_FASTA="1"
 
 # Function to display usage information
 usage() {
-    echo "./eNano --install-conda       installs eNano in the eNano_env conda environment and adds it to /envs/eNano_env/bin/ (only needed for initial install)"
-    echo ""
     echo "eNano: Pipeline that generates an OTU table and associated taxonomy from demultiplexed Nanopore data outputted by Minknow.
           The input usually is a 'fastq_pass' directory with barcode01 - barcode96 subdirectories, each containing fastq files that passed some user-defined quality threshold.
           3 steps are performed, each of which can be skipped.
@@ -158,7 +113,6 @@ usage() {
     echo "  --skip-otu           Skip the OTU clustering and taxonomy assignment step if set to 1 (default: $SKIP_OTU)"
     echo "  --skip-lulu          Performs the LULU otu curation step if set to 0 (default: $SKIP_LULU)"
     echo "  --skip-sp            Aggregates otus at the species level step if set to 0 (default: $SKIP_SP)"
-    echo "  --install-conda      Installs eNano and adds it to /envs/eNano_env/bin/"
     exit 1
 }
 
