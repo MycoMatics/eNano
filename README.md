@@ -137,7 +137,8 @@ Options:
 
 ---
 ## Test data
-Check the  [testrun](./build/testrun.txt) file for some commands to download the neccesary files
+Check the  [testrun](./build/testrun.txt) file for some commands to download the neccesary files .
+
 Test data can be found under `fastq_test`. This is part of the data generated for [our paper](https://doi.org/10.3390/jof10100708).
 To generate an OTU-table and taxonomic assignment (if not include --skip-otu 1), download a reference database that works with the vsearch --sintax flag (e.g., the UNITE db for fungi - USEARCH/UTAX release [here](https://unite.ut.ee/repository.php)).
 Version 10 for fungi can be found in this repository as `unite_sintax.fasta`. This file has the species-level names switched out for the SH code. If using this file, unzip first using
