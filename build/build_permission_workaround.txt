@@ -3,21 +3,3 @@ export APPTAINER_TMPDIR=/tmp
 mkdir -p $APPTAINER_TMPDIR
 chmod 777 /tmp
 
-# get the files from github
-wget \
-  https://raw.githubusercontent.com/MycoMatics/eNano/Apptainer/build/eNano_definition \
-  https://raw.githubusercontent.com/MycoMatics/eNano/Apptainer/test_data/fastq_test.tar.gz \
-  https://raw.githubusercontent.com/MycoMatics/eNano/Apptainer/test_data/utax_reference_dataset_04.04.2024.fasta.gz
-
-# extract downloaded files
-tar -xzf fastq_test.tar.gz && rm fastq_test.tar.gz && gunzip utax_reference_dataset_04.04.2024.fasta.gz
-
-# build the container
-apptainer build eNano.sif eNano_definition
-
-# run using container with desired flags
-apptainer run eNano.sif --help
-
-# run using container with desired flags
-apptainer run eNano.sif --fastqgz fastq_test --output test_eNano --db unite_sintax.fasta --clusterid 1 --skip-lulu 0 --skip-sp 0
-
