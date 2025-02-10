@@ -57,6 +57,7 @@ Having [Apptainer](https://github.com/apptainer/apptainer) (previously Singulari
 Download the definition file [eNano_definition](./build/eNano_definition). 
 Run the build command pointing to the eNano_definition location
 ```shell
+wget  https://raw.githubusercontent.com/MycoMatics/eNano/refs/heads/Apptainer/build/eNano_definition
 apptainer build eNano.sif eNano_definition
 ```
 For troubles with priveliges see a potential solution at [workaround](./build/build_permission_workaround.txt)
