@@ -520,7 +520,7 @@ def aggregate_species(df, barcode_columns):
     return species_df
 
 def main(otu_table, otu_output_file, lulu_table=None, lulu_output_file=None):
-    otu_df = pd.read_csv(otu_table, sep='\t')
+    otu_df = pd.read_csv(otu_table, sep='\t', low_memory=False)
     barcode_columns = [col for col in otu_df.columns if col.startswith('barcode')]
     
     # Process OTU table
@@ -530,7 +530,7 @@ def main(otu_table, otu_output_file, lulu_table=None, lulu_output_file=None):
 
     # Process LULU table if it exists
     if lulu_table and lulu_output_file:
-        lulu_df = pd.read_csv(lulu_table, sep='\t')
+        lulu_df = pd.read_csv(lulu_table, sep='\t', low_memory=False)
         parsed_lulu_df = parse_sintax_column(lulu_df, 'SINTAX')
         species_lulu_df = aggregate_species(parsed_lulu_df, barcode_columns)
         species_lulu_df.to_csv(lulu_output_file, sep='\t', index=False)
