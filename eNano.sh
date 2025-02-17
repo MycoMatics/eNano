@@ -367,20 +367,20 @@ fi
         rm "$OUTPUT_PATH"/*.bak
 
         # OTU clustering
+        # Extract centroid sequences of OTUs, clustered on id% identity threshold with the standard algorithm, then sort by size
+        echo "start OTU clustering"
+        vsearch --cluster_smallmem "${OUTPUT_PATH}/barcodes.fasta" --usersort --relabel OTU_ --centroids "${OUTPUT_PATH}/temp1.fasta" --otutabout "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv" --sizeout --log "${OUTPUT_PATH}/clusterlog.txt" --id "$CLUSTER_PERCENT" --threads "$THREADS"
+        vsearch --sortbysize "${OUTPUT_PATH}/temp1.fasta" --output "${OUTPUT_PATH}/temp2.fasta"
+
         # Chimera filtering (compare reference-based and de novo!)
         echo "start chimera filtering"
         if [ "$CHIM_REF" -eq 0 ]; then
-            vsearch --uchime_ref "${OUTPUT_PATH}/barcodes.fasta" --db "$DB_FASTA" --nonchimeras "${OUTPUT_PATH}/temp1.fasta"
+            vsearch --uchime_ref "${OUTPUT_PATH}/temp2.fasta" --db "$DB_FASTA" --nonchimeras "${OUTPUT_PATH}/centroids.fasta" --threads "$THREADS"
         else
-            vsearch --uchime_denovo "${OUTPUT_PATH}/barcodes.fasta" --nonchimeras "${OUTPUT_PATH}/temp1.fasta"
+            vsearch --uchime_denovo "${OUTPUT_PATH}/temp2.fasta" --nonchimeras "${OUTPUT_PATH}/centroids.fasta" --threads "$THREADS"
         fi
-
-        # Extract centroid sequences of OTUs, clustered on id% identity threshold with the standard algorithm, then sort by size
-        echo "start OTU clustering"
-        vsearch --cluster_smallmem "${OUTPUT_PATH}/temp1.fasta" --usersort --relabel OTU_ --centroids "${OUTPUT_PATH}/temp2.fasta" --otutabout "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_otutable.tsv" --sizeout --log "${OUTPUT_PATH}/clusterlog.txt" --id "$CLUSTER_PERCENT" --threads "$THREADS"
-        vsearch --sortbysize "${OUTPUT_PATH}/temp2.fasta" --output "${OUTPUT_PATH}/centroids.fasta"
+        
         rm "$OUTPUT_PATH"/temp*.fasta
-
         # Get taxonomy
         echo "start taxonomic assignment"
         vsearch --db "$DB_FASTA" --sintax "${OUTPUT_PATH}/centroids.fasta" --tabbedout "${OUTPUT_PATH}/$(basename "$OUTPUT_PATH")_sintaxonomy.tsv" --sintax_cutoff "$SINTAX_CUTOFF"
