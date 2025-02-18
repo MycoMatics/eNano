@@ -363,7 +363,7 @@ fi
 
         # Temporary fix for vsearch v2.21.1 - add another semicolon after the sample name
         echo "adding semicolon to sample ID"
-        sed -i.bak "s/;sample=bc[0-9][0-9]/&;/" "${OUTPUT_PATH}/barcodes.fasta"
+        sed -i.bak "s/\(;sample=.*[^;]\)$/\1;/" "${OUTPUT_PATH}/barcodes.fasta"
         rm "$OUTPUT_PATH"/*.bak
 
         # OTU clustering
